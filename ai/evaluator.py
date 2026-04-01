@@ -8,10 +8,14 @@ from langchain_core.messages import BaseMessage, HumanMessage
 from langchain_core.prompts import ChatPromptTemplate
 from pydantic import BaseModel, Field
 from langchain_deepseek import ChatDeepSeek
-from helper import anonymizer
+from helper import anonymizer, pdf_to_markdown
 from docling.document_converter import DocumentConverter
+from dotenv import load_dotenv
 
-DEEPSEEK_API_KEY = 'sk-8e731aed93e94681809bc4eef201d8da'
+load_dotenv()
+
+
+DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY")
 
 
 PERSIST_DIR = r"./chroma_hemas"
@@ -63,13 +67,32 @@ class Summarizer(BaseModel):
     final_score: float = Field(description="Final aggregated risk score between 0 and 1.")
 
 
+
 def evaluate_contract(source: str):
-    SOURCE=source
-    converter = DocumentConverter()
-    result = converter.convert(SOURCE)
-    text = result.document.export_to_markdown()
+    
+    """
+    End-to-end pipeline to analyze a contract and generate a risk report.
 
+    This function performs:
+        1. PDF → text conversion
+        2. Text cleaning and normalization
+        3. Retrieval of relevant rules from ChromaDB
+        4. Multi-agent risk evaluation using LangGraph
+        5. Aggregation of results into a final risk score and report
 
+    Args:
+        source (str): Path to the contract PDF file.
+
+    Returns:
+        dict: Final evaluation output containing:
+            - individual risk scores (legal, financial, compliance, operational, data, termination)
+            - final_score (float)
+            - final_report (str)
+    """
+    
+    text = pdf_to_markdown(source)
+    text = " ".join(text.split())
+    
     client = chromadb.PersistentClient(path=PERSIST_DIR)
     collection = client.get_collection(name=COLLECTION_NAME)
 
@@ -81,6 +104,20 @@ def evaluate_contract(source: str):
 
 
     def format_rules(result):
+        
+        """
+        Format retrieved vector database results into a readable rule string.
+
+        Converts documents and metadata into structured text that can be
+        passed to LLM agents as contextual input.
+
+        Args:
+            result (dict): Output from ChromaDB query containing documents and metadata.
+
+        Returns:
+            str: Formatted string of rules with associated metadata.
+        """
+        
         docs = result.get("documents", [[]])[0]
         metas = result.get("metadatas", [[]])[0]
 
@@ -96,11 +133,28 @@ def evaluate_contract(source: str):
 
 
     def retrieve_rules(state: ContractState):
+        
+        """
+        Retrieve relevant rules from the vector database for the given contract.
+
+        Performs:
+            - General rule retrieval (top-k similar rules)
+            - Risk-type specific retrieval (legal, financial, etc.)
+
+        Args:
+            state (ContractState): Current graph state containing contract text.
+
+        Returns:
+            dict:
+                - rules_context (str): General retrieved rules
+                - rules_by_type (dict): Rules grouped by risk type
+        """
+        
         query = state["text"]
 
         general = collection.query(
             query_texts=[query],
-            n_results=8
+            n_results=5
         )
         rules_context = format_rules(general)
 
@@ -109,7 +163,7 @@ def evaluate_contract(source: str):
             try:
                 result = collection.query(
                     query_texts=[query],
-                    n_results=5,
+                    n_results=3,
                     where={"risk_type": risk}
                 )
                 rules_by_type[risk] = format_rules(result)
@@ -127,16 +181,20 @@ def evaluate_contract(source: str):
             ("system",
             """You are a legal risk expert.
 
-    Use retrieved structured rules:
-    - Focus on risk_type = legal
-    - Use severity to weigh importance
-    - Use clause_type for context
-    - Compare retrieved rules against the contract
+            IMPORTANT CONTEXT CHECK:
+            - Legal risk is ALWAYS applicable
+            - But severity must depend on:
+            - ambiguity
+            - conflicting clauses
+            - missing critical terms
 
-    Return:
-    - legal_risk (0 to 1)
-    - short explanation
-    """),
+            Do NOT exaggerate:
+            - minor ambiguity ≠ high risk
+
+            Return:
+            - legal_risk (0 to 1)
+            - explanation grounded in clauses
+            """),
             ("user", "RULES:\n{rules}\n\nCONTRACT:\n{contract}")
         ])
 
@@ -154,18 +212,22 @@ def evaluate_contract(source: str):
 
     def financial_agent(state: ContractState):
         prompt = ChatPromptTemplate.from_messages([
-            ("system",
+           ("system",
             """You are a financial risk expert.
 
-    Use retrieved structured rules:
-    - Focus on risk_type = financial
-    - Use severity to weigh importance
-    - Look for payment, penalties, pricing, liability exposure
+            IMPORTANT CONTEXT CHECK:
+            - Only assign HIGH risk if financial exposure is clearly harmful
+            - Standard pricing/royalties ≠ high risk automatically
 
-    Return:
-    - financial_risk (0 to 1)
-    - short explanation
-    """),
+            Focus on:
+            - penalties
+            - liability exposure
+            - payment uncertainty
+
+            Return:
+            - financial_risk (0 to 1)
+            - explanation with justification
+            """),
             ("user", "RULES:\n{rules}\n\nCONTRACT:\n{contract}")
         ])
 
@@ -186,15 +248,21 @@ def evaluate_contract(source: str):
             ("system",
             """You are a compliance risk expert.
 
-    Use retrieved structured rules:
-    - Focus on risk_type = compliance
-    - Use severity to weigh importance
-    - Look for regulatory duties, confidentiality, privacy, and governance obligations
+            IMPORTANT CONTEXT CHECK:
+            - Determine if regulatory/compliance obligations are relevant
+            - If contract is purely commercial (no regulated domain) → assign LOW score
 
-    Return:
-    - compliance_risk (0 to 1)
-    - short explanation
-    """),
+            Only evaluate compliance risk IF:
+            - legal/regulatory obligations exist
+            - licensing, governance, or regulatory constraints exist
+
+            Avoid:
+            - assuming compliance risk without evidence
+
+            Return:
+            - compliance_risk (0 to 1)
+            - explanation with applicability reasoning
+            """),
             ("user", "RULES:\n{rules}\n\nCONTRACT:\n{contract}")
         ])
 
@@ -215,15 +283,18 @@ def evaluate_contract(source: str):
             ("system",
             """You are an operational risk expert.
 
-    Use retrieved structured rules:
-    - Focus on risk_type = operational
-    - Use severity to weigh importance
-    - Look for delivery risk, performance obligations, dependencies, SLAs, service interruptions
+            IMPORTANT CONTEXT CHECK:
+            - Only flag operational risk if execution depends on uncertain conditions
 
-    Return:
-    - operational_risk (0 to 1)
-    - short explanation
-    """),
+            Look for:
+            - vague obligations
+            - dependencies (marketing, third parties)
+            - unclear deliverables
+
+            Return:
+            - operational_risk (0 to 1)
+            - explanation
+            """),
             ("user", "RULES:\n{rules}\n\nCONTRACT:\n{contract}")
         ])
 
@@ -244,15 +315,26 @@ def evaluate_contract(source: str):
             ("system",
             """You are a data protection and privacy risk expert.
 
-    Use retrieved structured rules:
-    - Focus on risk_type = data
-    - Use severity to weigh importance
-    - Look for personal data handling, privacy, confidentiality, breach, retention, access control
+            IMPORTANT CONTEXT CHECK:
+            - First determine if the contract involves personal data, customer data, or system/data access
+            - If NO → data risk is NOT APPLICABLE → assign LOW score (0–0.2)
+            - Do NOT flag missing data clauses if data is not involved
 
-    Return:
-    - data_risk (0 to 1)
-    - short explanation
-    """),
+            Only evaluate risk IF:
+            - personal data is processed
+            - customer/user data is handled
+            - system/database access is granted
+
+            Use retrieved structured rules:
+            - Focus on risk_type = data
+            - Use severity to weigh importance
+
+            Return:
+            - data_risk (0 to 1)
+            - explanation including:
+            - whether data risk is applicable
+            - justification
+            """),
             ("user", "RULES:\n{rules}\n\nCONTRACT:\n{contract}")
         ])
 
@@ -273,15 +355,17 @@ def evaluate_contract(source: str):
             ("system",
             """You are a termination risk expert.
 
-    Use retrieved structured rules:
-    - Focus on risk_type = termination
-    - Use severity to weigh importance
-    - Look for exit clauses, termination rights, notice periods, renewal lock-ins, penalties
+            IMPORTANT CONTEXT CHECK:
+            - Termination risk is relevant in most contracts
+            - But HIGH risk only if:
+            - unfair termination rights
+            - very short cure periods
+            - heavy penalties
 
-    Return:
-    - termination_risk (0 to 1)
-    - short explanation
-    """),
+            Return:
+            - termination_risk (0 to 1)
+            - explanation
+            """),
             ("user", "RULES:\n{rules}\n\nCONTRACT:\n{contract}")
         ])
 
@@ -298,8 +382,31 @@ def evaluate_contract(source: str):
 
 
     def evaluator(state: ContractState):
+        
+        """
+        Aggregate individual risk scores and generate a final risk report.
+
+        Uses an LLM to:
+            - Summarize agent comments
+            - Combine risk scores
+            - Produce a final structured report
+
+        Args:
+            state (ContractState): Current state containing all risk scores and comments.
+
+        Returns:
+            dict:
+                - final_score (float): Aggregated risk score (0 to 1)
+                - final_report (str): Generated risk analysis report
+        """
+        
         prompt = ChatPromptTemplate.from_messages([
-            ("system", "You are a contract risk evaluator."),
+            ("system", """You are a contract risk evaluator. 
+             DO NOT EXAGGERATE.
+             Do NOT assign HIGH risk unless:
+            - clause creates financial loss OR
+            - legal enforceability issue OR
+            - operational failure risk"""),
             ("user",
             """COMMENTS:
             {comments}
@@ -358,7 +465,7 @@ def evaluate_contract(source: str):
 
     app = graph.compile()
 
-    anonymized_text = anonymizer(text)
+    anonymized_text, entity_map = anonymizer(text)
 
     final = app.invoke({
         "text": anonymized_text,
