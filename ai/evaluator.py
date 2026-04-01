@@ -14,7 +14,7 @@ from docling.document_converter import DocumentConverter
 DEEPSEEK_API_KEY = 'sk-8e731aed93e94681809bc4eef201d8da'
 
 
-PERSIST_DIR = r"/chroma_hemas"
+PERSIST_DIR = r"./chroma_hemas"
 COLLECTION_NAME = "check_collection"
 
 class ContractState(TypedDict):
@@ -359,7 +359,6 @@ def evaluate_contract(source: str):
     app = graph.compile()
 
     anonymized_text = anonymizer(text)
-    anonymized_text = text
 
     final = app.invoke({
         "text": anonymized_text,
@@ -379,10 +378,12 @@ def evaluate_contract(source: str):
     print("=" * 50)
     print(final["final_report"])
     print("=" * 50)
-    print("FINAL SCORE:", final["final_score"])
+    print("FINAL RISK SCORE:", final["final_score"])
+    
+    return final
     
     
     
-SOURCE = "C:/Users/Lenovo/Downloads/Contracts_dataset_1/full_contract_pdf/Part_II/Hosting/CENTRACKINTERNATIONALINC_10_29_1999-EX-10.3-WEB SITE HOSTING AGREEMENT.PDF"
+#SOURCE = "C:/Users/Lenovo/Downloads/Contracts_dataset_1/full_contract_pdf/Part_II/Hosting/CENTRACKINTERNATIONALINC_10_29_1999-EX-10.3-WEB SITE HOSTING AGREEMENT.PDF"
     
-evaluate_contract(SOURCE)
+#evaluate_contract(SOURCE)

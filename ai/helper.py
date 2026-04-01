@@ -145,13 +145,6 @@ class RulesList(BaseModel):
         description="List of Rules for each with; rule, risk_type, severity and clause_type"
     )
 
-llm = ChatDeepSeek(
-    model="deepseek-chat",
-    temperature=0,
-    api_key=DEEPSEEK_API_KEY
-)
-
-
 class Rule(BaseModel):
     '''
     Return dictionary for Rules with keys:
@@ -183,14 +176,16 @@ class RulesList(BaseModel):
         description="List of Rules for each with; rule, risk_type, severity and clause_type"
     )
 
-llm = ChatDeepSeek(
-    model="deepseek-chat",
-    temperature=0,
-    api_key=DEEPSEEK_API_KEY
-)
+
 
 
 def extract_rules(contract):
+    
+  llm = ChatDeepSeek(
+    model="deepseek-chat",
+    temperature=0,
+    api_key=DEEPSEEK_API_KEY)
+  
   prompt_to_rules = ChatPromptTemplate.from_messages([
       ("system", """You are a legal risk analysis expert.
 
@@ -297,7 +292,7 @@ def convert_to_documents(rules):
     return docs
 
 
-def build_vectorstore(docs, db_path="/chroma_hemas"):
+def build_vectorstore(docs, db_path="./chroma_hemas"):
 
     persist_dir = db_path
     os.makedirs(persist_dir, exist_ok=True)
@@ -378,7 +373,7 @@ def feed_rules(docs_path: str):
             print("\n")
 
 
-def check_rules(db_path: str="/chroma_hemas"):
+def check_rules(db_path: str="./chroma_hemas"):
     client = chromadb.PersistentClient(path=db_path)
     collection = client.get_collection(name="check_collection")
     data = collection.get()
@@ -389,6 +384,6 @@ def check_rules(db_path: str="/chroma_hemas"):
         print(f"\nRule {i+1}:")
         print("Text:", docs[i])
         print("Metadata:", metas[i])
-        
+
         
         
