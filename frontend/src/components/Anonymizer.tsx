@@ -30,38 +30,30 @@ export default function Anonymizer({ onAudit }: { onAudit: () => void }) {
     setIsProcessing(true);
     setIsStored(false);
     setData(null);
+    const formData = new FormData();
+    formData.append('file', file);
 
     // Simulate API call
     try {
-      // In a real app: await fetch('http://localhost:8000/upload', { method: 'POST', body: formData });
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      const mockResponse: AnonymizeResponse = {
-        "document_id": "550e8400-e29b-41d4-a716-446655440000",
-        "raw_text": "THIS MASTER SERVICES AGREEMENT (the Agreement) is made this 12th day of October, 2023 (the Effective Date). BETWEEN: Acme Dynamics Inc., a Delaware corporation (Client) and Sarah J. Miller d/b/a Miller Consulting Group (Contractor). WHEREAS, the parties desire to enter into an arrangement for the provision of certain software engineering services starting on November 1, 2023. Notice shall be sent to Acme Headquarters at the address listed below. Signed: John R. Sterling, CEO, Acme Dynamics.",
-        "anonymized_text": "THIS MASTER SERVICES AGREEMENT (the Agreement) is made this DATE_1 (the Effective Date). BETWEEN: ORG_1, a Delaware corporation (Client) and PERSON_1 d/b/a ORG_2 (Contractor). WHEREAS, the parties desire to enter into an arrangement for the provision of certain software engineering services starting on DATE_2. Notice shall be sent to LOCATION_1 at the address listed below. Signed: PERSON_2, CEO, ORG_3.",
-        "mapping_dict": {
-          "DATE_1": "12th day of October, 2023",
-          "ORG_1": "Acme Dynamics Inc.",
-          "PERSON_1": "Sarah J. Miller",
-          "ORG_2": "Miller Consulting Group",
-          "DATE_2": "November 1, 2023",
-          "LOCATION_1": "Acme Headquarters",
-          "PERSON_2": "John R. Sterling",
-          "ORG_3": "Acme Dynamics"
-        }
-      };
+    const response = await fetch('http://localhost:8000/contracts/anonymize', {
+      method: 'POST',
+      body: formData,
+    });
 
-      setData(mockResponse);
-      localStorage.setItem('contractiq_entity_map', JSON.stringify(mockResponse));
-      localStorage.setItem('contractiq_document_id', mockResponse.document_id);
-      setIsStored(true);
-    } catch (err) {
-      setError('Failed to process document.');
-    } finally {
-      setIsProcessing(false);
-    }
-  };
+    if (!response.ok) throw new Error('Upload failed');
+
+    const result: AnonymizeResponse = await response.json();
+    
+    setData(result);
+    localStorage.setItem('contractiq_entity_map', JSON.stringify(result));
+    localStorage.setItem('contractiq_document_id', result.document_id);
+    setIsStored(true);
+  } catch (err) {
+    setError('Failed to process document.');
+  } finally {
+    setIsProcessing(false);
+  }
+    };
 
   const onFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {

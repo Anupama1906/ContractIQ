@@ -148,7 +148,8 @@ def anonymizer(text: str):
 
         text = text[:r.start] + placeholder + text[r.end:]
 
-    return text, entity_map
+    reversed_map = {v: k for k, v in entity_map.items()}
+    return text, reversed_map
 
 
 def original_markdown_anonymized_map(source: str):

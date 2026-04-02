@@ -7,7 +7,11 @@ app = FastAPI()
 # Configure CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3001"], # Your Vite frontend URL
+    allow_origins=[
+        "http://localhost:3000", # Common Vite/CRA port
+        "http://localhost:3001", # The port in your snippet
+        "http://localhost:5173", # Default Vite port
+    ], # Your Vite frontend URL
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
