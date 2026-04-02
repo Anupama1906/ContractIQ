@@ -6,6 +6,7 @@ from presidio_analyzer.nlp_engine import NlpEngineProvider
 from pathlib import Path
 import os
 import uuid
+import json
 from typing import List
 from pydantic import BaseModel, Field
 from thefuzz import fuzz
@@ -149,6 +150,11 @@ def anonymizer(text: str):
 
     return text, entity_map
 
+
+def original_markdown_anonymized_map(source: str):
+    original_markdown = pdf_to_markdown(source)
+    anonymized_markdown, entity_map = anonymizer(original_markdown)
+    return json.dumps({"pdf_text": original_markdown, "anonymized_text": anonymized_markdown, "entity_map": entity_map})
 
 class Rule(BaseModel):
     '''
@@ -482,6 +488,13 @@ def check_rules(db_path: str="./chroma_hemas"):
         print(f"\nRule {i+1}:")
         print("Text:", docs[i])
         print("Metadata:", metas[i])
+
+
+
+#SOURCE = "C:/Users/Lenovo/Downloads/Contracts_dataset_1/full_contract_pdf/Part_II/Hosting/CENTRACKINTERNATIONALINC_10_29_1999-EX-10.3-WEB SITE HOSTING AGREEMENT.PDF"
+
+#print(original_markdown_anonymized_map(source=SOURCE))
+
 
         
         
