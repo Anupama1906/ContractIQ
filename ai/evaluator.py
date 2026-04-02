@@ -11,16 +11,18 @@ from langchain_groq import ChatGroq
 from helper import anonymizer, pdf_to_markdown
 from docling.document_converter import DocumentConverter
 from dotenv import load_dotenv
-
+from pathlib import Path
 load_dotenv()
 
 
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 
-
-PERSIST_DIR = r"./chroma_hemas"
+AI_DIR = Path(__file__).resolve().parent
+PERSIST_DIR = str(AI_DIR / "chroma_hemas")
 COLLECTION_NAME = "check_collection"
 
+client = chromadb.PersistentClient(path=PERSIST_DIR)
+collection = client.get_collection(name=COLLECTION_NAME)
 class ContractState(TypedDict):
     text: str
     rules_context: str
@@ -80,8 +82,7 @@ def evaluate_contract(anonymized_text: str):
                             - Your analysis must remain valid even after de-anonymization
                          """
     
-    client = chromadb.PersistentClient(path=PERSIST_DIR)
-    collection = client.get_collection(name=COLLECTION_NAME)
+    
 
     llm = ChatGroq(
         model="llama-3.3-70b-versatile",
@@ -356,22 +357,26 @@ def evaluate_contract(anonymized_text: str):
         """
         
         prompt = ChatPromptTemplate.from_messages([
-            ("system", """You are a contract risk evaluator. 
-             DO NOT EXAGGERATE.
-             Do NOT assign HIGH risk unless:
-            - clause creates financial loss OR
-            - legal enforceability issue OR
-            - operational failure risk"""),
-            ("user",
-            """COMMENTS:
-            {comments}
+            ("system", "You are a contract risk evaluator. You MUST use specific Markdown headers."),
+            ("user", """
+            COMMENTS: {comments}
+            RISK SCORES: {risk}
 
-            RISK SCORES:
-            {risk}
+            Generate the report using EXACTLY this structure:
 
-            Generate:
-            - final report (100–200 words)
-            - final_score (0 to 1)
+            ## Overall Risk Profile: [SEVERITY] ([SCORE])
+            [Provide a 2-sentence executive summary here]
+
+            ## Risk Areas
+            **[Title] ([Score]) - [Severity]**
+            - [Point 1]
+            - [Point 2]
+
+            ## Recommendations
+            1. **[Action]** [Description]
+            2. **[Action]** [Description]
+
+            FINAL RISK SCORE: [SCORE]
             """ + ANONYMIZATION_RULE)
         ])
 

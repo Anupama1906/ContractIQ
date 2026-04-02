@@ -2,10 +2,11 @@ import os
 import uuid
 import json
 from fastapi import APIRouter, UploadFile, File, HTTPException
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
 from app.services.anonymization_service import anonymize_document
-from app.services.rag_service import evaluate_document
+from app.services.rag_service import evaluate_document_stream
 
 router = APIRouter()
 
@@ -36,7 +37,6 @@ async def anonymize_contract(file: UploadFile = File(...)):
 
         # Call anonymization service
         result = anonymize_document(file_path)
-
 
         # Save processed output (important for next step)
         processed_data = {
@@ -74,15 +74,16 @@ class EvaluateRequest(BaseModel):
 async def evaluate_contract(request: EvaluateRequest):
     try:
         document_id = request.document_id
-
         processed_file_path = os.path.join(PROCESSED_DIR, f"{document_id}.json")
 
+        # Verify document exists
         if not os.path.exists(processed_file_path):
             raise HTTPException(status_code=404, detail="Document not found")
 
         with open(processed_file_path, "r") as f:
             data = json.load(f)
 
+        # Check state
         if data.get("status") != "ANONYMIZED":
             raise HTTPException(
                 status_code=400,
@@ -91,22 +92,23 @@ async def evaluate_contract(request: EvaluateRequest):
 
         anonymized_text = data["anonymized_text"]
 
-        rag_result = evaluate_document(anonymized_text)
+        # Streaming generator to pipe updates from ai/evaluator.py to the frontend
+        def event_generator():
+            # Iterate through the generator yielded by the service
+            for step_data in evaluate_document_stream(anonymized_text):
+                # Update status locally if the final agent finishes
+                if step_data["agent"] == "evaluate":
+                    data["status"] = "EVALUATED"
+                    data["report"] = step_data.get("final_report")
+                    data["risk_score"] = step_data.get("risk_score")
+                    
+                    with open(processed_file_path, "w") as f:
+                        json.dump(data, f, indent=4)
 
-        data["report"] = rag_result["report"]
-        data["risk_score"] = rag_result["risk_score"]
-        data["risk_level"] = rag_result["risk_level"]
-        data["status"] = "EVALUATED"
+                # Yield as Newline-Delimited JSON (NDJSON)
+                yield json.dumps(step_data) + "\n"
 
-        with open(processed_file_path, "w") as f:
-            json.dump(data, f, indent=4)
-
-        return {
-            "document_id": document_id,
-            "report": rag_result["report"],
-            "risk_score": rag_result["risk_score"],
-            "risk_level": rag_result["risk_level"]
-        }
+        return StreamingResponse(event_generator(), media_type="application/x-ndjson")
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

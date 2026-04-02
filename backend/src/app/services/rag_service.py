@@ -1,31 +1,18 @@
 import sys
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent.parent / "ai"))
+# Structure: backend/src/app/services/rag_service.py
+# Needs to go up to find the 'ai' directory
+ai_path = str(Path(__file__).resolve().parents[4] / "ai")
+if ai_path not in sys.path:
+    sys.path.insert(0, ai_path)
 
 from evaluator import evaluate_contract
 
-def evaluate_document(anonymized_text: str):
-    # """
-    # Mock RAG + Agent evaluation.
-    # Replace later with real implementation.
-    # """
-
-    # # 🔴 Replace later with real RAG pipeline
-    # return {
-    #     "report": f"Analysis of document:\n\n{anonymized_text[:200]}...",
-    #     "risk_score": 0.75,
-    #     "risk_level": "HIGH",
-    #     "audit_trail": [
-    #         {"step": "AUDITOR", "message": "Detected missing liability clause"},
-    #         {"step": "ATTACKER", "message": "Challenged severity"},
-    #         {"step": "AUDITOR", "message": "Upgraded to HIGH risk"}
-    #     ]
-    # }
-
-    evaluation_report = evaluate_contract(anonymized_text)
-    
-    
-
-
-
+def evaluate_document_stream(anonymized_text: str):
+    """
+    Acts as a pass-through for the AI generator to support live streaming.
+    """
+    # evaluate_contract is already a generator that yields JSON updates
+    for step_data in evaluate_contract(anonymized_text):
+        yield step_data
