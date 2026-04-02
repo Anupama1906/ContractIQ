@@ -96,7 +96,6 @@ async def evaluate_contract(request: EvaluateRequest):
         data["report"] = rag_result["report"]
         data["risk_score"] = rag_result["risk_score"]
         data["risk_level"] = rag_result["risk_level"]
-        data["audit_trail"] = rag_result["audit_trail"]
         data["status"] = "EVALUATED"
 
         with open(processed_file_path, "w") as f:
@@ -106,8 +105,7 @@ async def evaluate_contract(request: EvaluateRequest):
             "document_id": document_id,
             "report": rag_result["report"],
             "risk_score": rag_result["risk_score"],
-            "risk_level": rag_result["risk_level"],
-            "audit_trail": rag_result["audit_trail"]
+            "risk_level": rag_result["risk_level"]
         }
 
     except Exception as e:
