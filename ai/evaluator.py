@@ -8,15 +8,6 @@ from langchain_core.messages import BaseMessage, HumanMessage
 from langchain_core.prompts import ChatPromptTemplate
 from pydantic import BaseModel, Field
 from langchain_deepseek import ChatDeepSeek
-<<<<<<< HEAD
-from helper import anonymizer
-from docling.document_converter import DocumentConverter
-
-DEEPSEEK_API_KEY = 'sk-8e731aed93e94681809bc4eef201d8da'
-
-
-PERSIST_DIR = r"/chroma_hemas"
-=======
 from helper import anonymizer, pdf_to_markdown
 from docling.document_converter import DocumentConverter
 from dotenv import load_dotenv
@@ -28,7 +19,6 @@ DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY")
 
 
 PERSIST_DIR = r"./chroma_hemas"
->>>>>>> senindu
 COLLECTION_NAME = "check_collection"
 
 class ContractState(TypedDict):
@@ -77,15 +67,6 @@ class Summarizer(BaseModel):
     final_score: float = Field(description="Final aggregated risk score between 0 and 1.")
 
 
-<<<<<<< HEAD
-def evaluate_contract(source: str):
-    SOURCE=source
-    converter = DocumentConverter()
-    result = converter.convert(SOURCE)
-    text = result.document.export_to_markdown()
-
-
-=======
 
 def evaluate_contract_(source: str):
     
@@ -129,7 +110,6 @@ def evaluate_contract_(source: str):
     text = pdf_to_markdown(source)
     text = " ".join(text.split())
     
->>>>>>> senindu
     client = chromadb.PersistentClient(path=PERSIST_DIR)
     collection = client.get_collection(name=COLLECTION_NAME)
 
@@ -141,8 +121,6 @@ def evaluate_contract_(source: str):
 
 
     def format_rules(result):
-<<<<<<< HEAD
-=======
         
         """
         Format retrieved vector database results into a readable rule string.
@@ -157,7 +135,6 @@ def evaluate_contract_(source: str):
             str: Formatted string of rules with associated metadata.
         """
         
->>>>>>> senindu
         docs = result.get("documents", [[]])[0]
         metas = result.get("metadatas", [[]])[0]
 
@@ -173,8 +150,6 @@ def evaluate_contract_(source: str):
 
 
     def retrieve_rules(state: ContractState):
-<<<<<<< HEAD
-=======
         
         """
         Retrieve relevant rules from the vector database for the given contract.
@@ -192,16 +167,11 @@ def evaluate_contract_(source: str):
                 - rules_by_type (dict): Rules grouped by risk type
         """
         
->>>>>>> senindu
         query = state["text"]
 
         general = collection.query(
             query_texts=[query],
-<<<<<<< HEAD
-            n_results=8
-=======
             n_results=5
->>>>>>> senindu
         )
         rules_context = format_rules(general)
 
@@ -210,11 +180,7 @@ def evaluate_contract_(source: str):
             try:
                 result = collection.query(
                     query_texts=[query],
-<<<<<<< HEAD
-                    n_results=5,
-=======
                     n_results=3,
->>>>>>> senindu
                     where={"risk_type": risk}
                 )
                 rules_by_type[risk] = format_rules(result)
@@ -232,18 +198,6 @@ def evaluate_contract_(source: str):
             ("system",
             """You are a legal risk expert.
 
-<<<<<<< HEAD
-    Use retrieved structured rules:
-    - Focus on risk_type = legal
-    - Use severity to weigh importance
-    - Use clause_type for context
-    - Compare retrieved rules against the contract
-
-    Return:
-    - legal_risk (0 to 1)
-    - short explanation
-    """),
-=======
             IMPORTANT CONTEXT CHECK:
             - Legal risk is ALWAYS applicable
             - But severity must depend on:
@@ -258,7 +212,6 @@ def evaluate_contract_(source: str):
             - legal_risk (0 to 1)
             - explanation grounded in clauses
             """),
->>>>>>> senindu
             ("user", "RULES:\n{rules}\n\nCONTRACT:\n{contract}")
         ])
 
@@ -276,20 +229,6 @@ def evaluate_contract_(source: str):
 
     def financial_agent(state: ContractState):
         prompt = ChatPromptTemplate.from_messages([
-<<<<<<< HEAD
-            ("system",
-            """You are a financial risk expert.
-
-    Use retrieved structured rules:
-    - Focus on risk_type = financial
-    - Use severity to weigh importance
-    - Look for payment, penalties, pricing, liability exposure
-
-    Return:
-    - financial_risk (0 to 1)
-    - short explanation
-    """),
-=======
            ("system",
             """You are a financial risk expert.
 
@@ -306,7 +245,6 @@ def evaluate_contract_(source: str):
             - financial_risk (0 to 1)
             - explanation with justification
             """),
->>>>>>> senindu
             ("user", "RULES:\n{rules}\n\nCONTRACT:\n{contract}")
         ])
 
@@ -327,17 +265,6 @@ def evaluate_contract_(source: str):
             ("system",
             """You are a compliance risk expert.
 
-<<<<<<< HEAD
-    Use retrieved structured rules:
-    - Focus on risk_type = compliance
-    - Use severity to weigh importance
-    - Look for regulatory duties, confidentiality, privacy, and governance obligations
-
-    Return:
-    - compliance_risk (0 to 1)
-    - short explanation
-    """),
-=======
             IMPORTANT CONTEXT CHECK:
             - Determine if regulatory/compliance obligations are relevant
             - If contract is purely commercial (no regulated domain) → assign LOW score
@@ -353,7 +280,6 @@ def evaluate_contract_(source: str):
             - compliance_risk (0 to 1)
             - explanation with applicability reasoning
             """),
->>>>>>> senindu
             ("user", "RULES:\n{rules}\n\nCONTRACT:\n{contract}")
         ])
 
@@ -374,17 +300,6 @@ def evaluate_contract_(source: str):
             ("system",
             """You are an operational risk expert.
 
-<<<<<<< HEAD
-    Use retrieved structured rules:
-    - Focus on risk_type = operational
-    - Use severity to weigh importance
-    - Look for delivery risk, performance obligations, dependencies, SLAs, service interruptions
-
-    Return:
-    - operational_risk (0 to 1)
-    - short explanation
-    """),
-=======
             IMPORTANT CONTEXT CHECK:
             - Only flag operational risk if execution depends on uncertain conditions
 
@@ -397,7 +312,6 @@ def evaluate_contract_(source: str):
             - operational_risk (0 to 1)
             - explanation
             """),
->>>>>>> senindu
             ("user", "RULES:\n{rules}\n\nCONTRACT:\n{contract}")
         ])
 
@@ -418,17 +332,6 @@ def evaluate_contract_(source: str):
             ("system",
             """You are a data protection and privacy risk expert.
 
-<<<<<<< HEAD
-    Use retrieved structured rules:
-    - Focus on risk_type = data
-    - Use severity to weigh importance
-    - Look for personal data handling, privacy, confidentiality, breach, retention, access control
-
-    Return:
-    - data_risk (0 to 1)
-    - short explanation
-    """),
-=======
             IMPORTANT CONTEXT CHECK:
             - First determine if the contract involves personal data, customer data, or system/data access
             - If NO → data risk is NOT APPLICABLE → assign LOW score (0–0.2)
@@ -449,7 +352,6 @@ def evaluate_contract_(source: str):
             - whether data risk is applicable
             - justification
             """),
->>>>>>> senindu
             ("user", "RULES:\n{rules}\n\nCONTRACT:\n{contract}")
         ])
 
@@ -470,17 +372,6 @@ def evaluate_contract_(source: str):
             ("system",
             """You are a termination risk expert.
 
-<<<<<<< HEAD
-    Use retrieved structured rules:
-    - Focus on risk_type = termination
-    - Use severity to weigh importance
-    - Look for exit clauses, termination rights, notice periods, renewal lock-ins, penalties
-
-    Return:
-    - termination_risk (0 to 1)
-    - short explanation
-    """),
-=======
             IMPORTANT CONTEXT CHECK:
             - Termination risk is relevant in most contracts
             - But HIGH risk only if:
@@ -492,7 +383,6 @@ def evaluate_contract_(source: str):
             - termination_risk (0 to 1)
             - explanation
             """),
->>>>>>> senindu
             ("user", "RULES:\n{rules}\n\nCONTRACT:\n{contract}")
         ])
 
@@ -509,10 +399,6 @@ def evaluate_contract_(source: str):
 
 
     def evaluator(state: ContractState):
-<<<<<<< HEAD
-        prompt = ChatPromptTemplate.from_messages([
-            ("system", "You are a contract risk evaluator."),
-=======
         
         """
         Aggregate individual risk scores and generate a final risk report.
@@ -538,7 +424,6 @@ def evaluate_contract_(source: str):
             - clause creates financial loss OR
             - legal enforceability issue OR
             - operational failure risk"""),
->>>>>>> senindu
             ("user",
             """COMMENTS:
             {comments}
@@ -597,12 +482,7 @@ def evaluate_contract_(source: str):
 
     app = graph.compile()
 
-<<<<<<< HEAD
-    anonymized_text = anonymizer(text)
-    anonymized_text = text
-=======
     anonymized_text, entity_map = anonymizer(text)
->>>>>>> senindu
 
     final = app.invoke({
         "text": anonymized_text,
@@ -622,15 +502,6 @@ def evaluate_contract_(source: str):
     print("=" * 50)
     print(final["final_report"])
     print("=" * 50)
-<<<<<<< HEAD
-    print("FINAL SCORE:", final["final_score"])
-    
-    
-    
-SOURCE = "C:/Users/Lenovo/Downloads/Contracts_dataset_1/full_contract_pdf/Part_II/Hosting/CENTRACKINTERNATIONALINC_10_29_1999-EX-10.3-WEB SITE HOSTING AGREEMENT.PDF"
-    
-evaluate_contract(SOURCE)
-=======
     print("FINAL RISK SCORE:", final["final_score"])
     
     return final
@@ -894,4 +765,3 @@ def evaluate_contract(source: str):
 #SOURCE = "C:/Users/Lenovo/Downloads/Contracts_dataset_1/full_contract_pdf/Part_II/Hosting/CENTRACKINTERNATIONALINC_10_29_1999-EX-10.3-WEB SITE HOSTING AGREEMENT.PDF"
     
 #evaluate_contract(SOURCE)
->>>>>>> senindu

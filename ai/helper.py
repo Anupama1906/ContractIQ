@@ -6,10 +6,7 @@ from presidio_analyzer.nlp_engine import NlpEngineProvider
 from pathlib import Path
 import os
 import uuid
-<<<<<<< HEAD
-=======
 import json
->>>>>>> senindu
 from typing import List
 from pydantic import BaseModel, Field
 from thefuzz import fuzz
@@ -18,107 +15,6 @@ from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_deepseek import ChatDeepSeek
 from langchain_community.vectorstores import FAISS
-<<<<<<< HEAD
-
-DEEPSEEK_API_KEY = 'sk-8e731aed93e94681809bc4eef201d8da'
-
-def anonymizer(text: str):
-  
-  configuration = {
-      "nlp_engine_name": "transformers",
-      "models": [
-          {
-              "lang_code": "en",
-              "model_name": {
-                  "spacy": "en_core_web_sm",
-                  "transformers": "dslim/bert-base-NER"
-              }
-          }
-      ]
-  }
-
-  def find_similar_entity(entity_text, entity_map, threshold=80):
-    choices = list(entity_map.keys())
-    closest = process.extractOne(entity_text, choices)
-    if closest and closest[1] > threshold:
-      return closest[0]
-    return None
-
-
-  def remove_overlaps(results):
-    results = sorted(results, key=lambda x: (x.start, -(x.end - x.start)))
-    filtered = []
-
-    for r in results:
-        if not any(not (r.end <= f.start or r.start >= f.end) for f in filtered):
-            filtered.append(r)
-
-    return filtered
-
-
-  def normalize_text(t):
-    return t.strip().lower().replace(".", "")
-
-
-  entity_types = [
-      "CREDIT_CARD",
-      "CRYPTO",
-      "EMAIL_ADDRESS",
-      "IBAN_CODE",
-      "IP_ADDRESS",
-      "MAC_ADDRESS",
-      "NRP",
-      "LOCATION",
-      "PERSON",
-      "PHONE_NUMBER",
-      "MEDICAL_LICENSE",
-      "URL",
-      "ORGANIZATION"
-  ]
-
-  entity_counters = {}
-  entity_map = {}
-
-
-  provider = NlpEngineProvider(nlp_configuration=configuration)
-  nlp_engine = provider.create_engine()
-  analyzer = AnalyzerEngine(nlp_engine=nlp_engine)
-
-  results = analyzer.analyze(text=text, language="en")
-
-  results = remove_overlaps(results)
-
-  results = sorted(results, key=lambda x: x.start, reverse=True)
-
-
-  for r in results:
-    if r.entity_type == "DATE_TIME" or r.score < 0.5:
-        continue
-
-    entity_text = text[r.start:r.end]
-    entity_type = "UNCATEGORIZED_PII" if r.entity_type not in entity_types else r.entity_type
-
-    similar = None
-    similar = find_similar_entity(entity_text, entity_map)
-
-    if similar:
-        placeholder = entity_map[similar]
-    else:
-        if entity_type not in entity_counters:
-            entity_counters[entity_type] = 0
-
-        entity_counters[entity_type] += 1
-        entity_map[entity_text] = f"<{entity_type}_{entity_counters[entity_type]}>"
-        placeholder = entity_map[entity_text]
-
-    text = text[:r.start] + placeholder + text[r.end:]
-
-  print(text)
-  
-  return text
-
-
-=======
 from dotenv import load_dotenv
 from docling.document_converter import DocumentConverter
 
@@ -259,7 +155,6 @@ def original_markdown_anonymized_map(source: str):
     original_markdown = pdf_to_markdown(source)
     anonymized_markdown, entity_map = anonymizer(original_markdown)
     return json.dumps({"pdf_text": original_markdown, "anonymized_text": anonymized_markdown, "entity_map": entity_map})
->>>>>>> senindu
 
 class Rule(BaseModel):
     '''
@@ -292,116 +187,6 @@ class RulesList(BaseModel):
         description="List of Rules for each with; rule, risk_type, severity and clause_type"
     )
 
-<<<<<<< HEAD
-llm = ChatDeepSeek(
-    model="deepseek-chat",
-    temperature=0,
-    api_key=DEEPSEEK_API_KEY
-)
-
-
-class Rule(BaseModel):
-    '''
-    Return dictionary for Rules with keys:
-        -rule
-        -risk_type
-        -severity
-        -clause_type
-    '''
-    rule: str = Field(
-        description="A concise, generalized rule describing a risk pattern in contracts. It should follow a cause-effect format, e.g., 'Absence of liability cap increases financial risk exposure'."
-    )
-    risk_type: str = Field(
-        description="Category of risk associated with the rule. Must be one of: legal, financial, compliance, operational, data, or termination."
-    )
-    severity: str = Field(
-        description="Estimated impact level of the risk. Must be one of: low, medium, or high."
-    )
-    clause_type: str = Field(
-        description="The type of contract clause the rule relates to, such as confidentiality, liability, termination, data_protection, intellectual_property, or general."
-    )
-
-
-class RulesList(BaseModel):
-    '''
-    Returns the list of Rules
-
-    '''
-    rules: List[Rule] = Field(
-        description="List of Rules for each with; rule, risk_type, severity and clause_type"
-    )
-
-llm = ChatDeepSeek(
-    model="deepseek-chat",
-    temperature=0,
-    api_key=DEEPSEEK_API_KEY
-)
-
-
-def extract_rules(contract):
-  prompt_to_rules = ChatPromptTemplate.from_messages([
-      ("system", """You are a legal risk analysis expert.
-
-          Your task is to extract GENERALIZED and REUSABLE, MOST IMPORTANT 5 risk rules from the given contract by the user at below.
-
-          IMPORTANT INSTRUCTIONS:
-          - Ignore all names, organizations, and identifiers (they may be PII anonymized for fullfil data privacy)
-          - Focus ONLY on legal clauses, obligations, and conditions
-          - Do NOT copy text directly — generalize the rule
-          - Each rule must describe a cause → risk effect relationship
-          - Keep rules concise (1 sentence each)
-          - Avoid duplicates or very similar rules
-
-          RISK TYPES (use ONLY these values):
-          - legal
-          - financial
-          - compliance
-          - operational
-          - data
-          - termination
-
-          SEVERITY LEVELS:
-          - low → minor impact
-          - medium → moderate risk
-          - high → significant legal/financial exposure
-
-          CLAUSE TYPES (examples):
-          - confidentiality
-          - liability
-          - termination
-          - data_protection
-          - intellectual_property
-          - dispute_resolution
-          - usage
-          - general
-
-          OUTPUT FORMAT:
-          Return ONLY a valid JSON object in given format (structured llm output):
-
-          DO NOT include:
-          - explanations
-          - markdown
-          - extra text
-
-          """),
-      ("user", "CONTRACT: {contract}")
-
-  ])
-
-# 🔥 Structured chain
-  chain = prompt_to_rules | llm.with_structured_output(RulesList)
-
-  try:
-      response = chain.invoke({
-          "contract": contract[:90000]
-      })
-
-      return response.rules
-
-  except Exception as e:
-      print("⚠️ Structured extraction failed:", e)
-      return []
-=======
 
 
 
@@ -488,13 +273,10 @@ def extract_rules(contract):
     except Exception as e:
         print("⚠️ Structured extraction failed:", e)
         return []
->>>>>>> senindu
 
 
 
 def deduplicate_rules(rules, threshold=75):
-<<<<<<< HEAD
-=======
     
     """
     Remove duplicate or highly similar rules using fuzzy string matching.
@@ -509,7 +291,6 @@ def deduplicate_rules(rules, threshold=75):
     Returns:
         List[Rule]: Deduplicated list of rules.
     """
->>>>>>> senindu
 
     unique = []
     seen = []
@@ -532,8 +313,6 @@ def deduplicate_rules(rules, threshold=75):
 
 def convert_to_documents(rules):
 
-<<<<<<< HEAD
-=======
     """
     Convert Rule objects into LangChain Document format for vector storage.
 
@@ -547,7 +326,6 @@ def convert_to_documents(rules):
         List[Document]: List of LangChain Document objects.
     """
     
->>>>>>> senindu
     docs = []
 
     for r in rules:
@@ -566,9 +344,6 @@ def convert_to_documents(rules):
     return docs
 
 
-<<<<<<< HEAD
-def build_vectorstore(docs, db_path="/chroma_hemas"):
-=======
 def build_vectorstore(docs, db_path="./chroma_hemas"):
     
     """
@@ -584,7 +359,6 @@ def build_vectorstore(docs, db_path="./chroma_hemas"):
     Returns:
         chromadb.Collection: The updated Chroma collection instance.
     """
->>>>>>> senindu
 
     persist_dir = db_path
     os.makedirs(persist_dir, exist_ok=True)
@@ -633,8 +407,6 @@ def build_vectorstore(docs, db_path="./chroma_hemas"):
 
 
 def process_contract(text):
-<<<<<<< HEAD
-=======
     
     """
     Build or update a persistent Chroma vector database with semantic deduplication.
@@ -649,7 +421,6 @@ def process_contract(text):
     Returns:
         chromadb.Collection: The updated Chroma collection instance.
     """
->>>>>>> senindu
 
     print("🔍 Extracting rules...")
     rules = extract_rules(text)
@@ -660,22 +431,14 @@ def process_contract(text):
     print(f"After deduplication: {len(rules)}")
 
     docs = convert_to_documents(rules)
-<<<<<<< HEAD
-
-    collection = build_vectorstore(docs)
-
-=======
     collection = build_vectorstore(docs)
     
->>>>>>> senindu
     return collection
 
 
 
 def feed_rules(docs_path: str):
     
-<<<<<<< HEAD
-=======
     """
     Process multiple contract text files from a directory and populate the RAG database.
 
@@ -688,7 +451,6 @@ def feed_rules(docs_path: str):
         None
     """
     
->>>>>>> senindu
     directory_path = Path(docs_path)
     files_list = [entry.name for entry in directory_path.iterdir() if entry.is_file()]
 
@@ -702,9 +464,6 @@ def feed_rules(docs_path: str):
             print("\n")
 
 
-<<<<<<< HEAD
-def check_rules(db_path: str="/chroma_hemas"):
-=======
 def check_rules(db_path: str="./chroma_hemas"):
     
     """
@@ -719,7 +478,6 @@ def check_rules(db_path: str="./chroma_hemas"):
         None
     """
     
->>>>>>> senindu
     client = chromadb.PersistentClient(path=db_path)
     collection = client.get_collection(name="check_collection")
     data = collection.get()
@@ -730,9 +488,6 @@ def check_rules(db_path: str="./chroma_hemas"):
         print(f"\nRule {i+1}:")
         print("Text:", docs[i])
         print("Metadata:", metas[i])
-<<<<<<< HEAD
-        
-=======
 
 
 
@@ -741,6 +496,5 @@ def check_rules(db_path: str="./chroma_hemas"):
 #print(original_markdown_anonymized_map(source=SOURCE))
 
 
->>>>>>> senindu
         
         

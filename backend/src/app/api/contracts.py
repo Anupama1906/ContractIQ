@@ -23,6 +23,9 @@ async def anonymize_contract(file: UploadFile = File(...)):
         # Generate unique ID
         document_id = str(uuid.uuid4())
 
+        if not file.filename:
+            raise HTTPException(status_code=400, detail="File name is missing")
+
         # Save uploaded file
         file_extension = file.filename.split(".")[-1]
         file_path = os.path.join(UPLOAD_DIR, f"{document_id}.{file_extension}")
@@ -34,13 +37,14 @@ async def anonymize_contract(file: UploadFile = File(...)):
         # Call anonymization service
         result = anonymize_document(file_path)
 
+
         # Save processed output (important for next step)
         processed_data = {
             "document_id": document_id,
             "file_path": file_path,
             "raw_text": result["raw_text"],
             "anonymized_text": result["anonymized_text"],
-            "entity_map": result["entity_map"],
+            "mapping_dict": result["mapping_dict"],
             "status": "ANONYMIZED"
         }
 
@@ -54,7 +58,7 @@ async def anonymize_contract(file: UploadFile = File(...)):
             "document_id": document_id,
             "raw_text": result["raw_text"],
             "anonymized_text": result["anonymized_text"],
-            "entity_map": result["entity_map"]
+            "mapping_dict": result["mapping_dict"]
         }
 
     except Exception as e:
