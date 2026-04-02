@@ -69,6 +69,17 @@ class Summarizer(BaseModel):
 
 def evaluate_contract(anonymized_text: str):
     
+    ANONYMIZATION_RULE = """
+                         IMPORTANT DATA HANDLING RULE:
+                            - The contract text is anonymized using placeholders like <PERSON_1>, <ORGANIZATION_2>, etc.
+                            - You MUST:
+                                - Use placeholders exactly as given
+                                - NEVER invent real names
+                                - NEVER replace placeholders with assumptions
+                                - Refer only to placeholders if needed
+                            - Your analysis must remain valid even after de-anonymization
+                         """
+    
     client = chromadb.PersistentClient(path=PERSIST_DIR)
     collection = client.get_collection(name=COLLECTION_NAME)
 
@@ -138,7 +149,7 @@ def evaluate_contract(anonymized_text: str):
             Return:
             - legal_risk (0 to 1)
             - explanation grounded in clauses
-            """),
+            """ + ANONYMIZATION_RULE),
             ("user", "RULES:\n{rules}\n\nCONTRACT:\n{contract}")
         ])
 
@@ -171,7 +182,7 @@ def evaluate_contract(anonymized_text: str):
             Return:
             - financial_risk (0 to 1)
             - explanation with justification
-            """),
+            """ + ANONYMIZATION_RULE),
             ("user", "RULES:\n{rules}\n\nCONTRACT:\n{contract}")
         ])
 
@@ -206,7 +217,7 @@ def evaluate_contract(anonymized_text: str):
             Return:
             - compliance_risk (0 to 1)
             - explanation with applicability reasoning
-            """),
+            """ + ANONYMIZATION_RULE),
             ("user", "RULES:\n{rules}\n\nCONTRACT:\n{contract}")
         ])
 
@@ -238,7 +249,7 @@ def evaluate_contract(anonymized_text: str):
             Return:
             - operational_risk (0 to 1)
             - explanation
-            """),
+            """ + ANONYMIZATION_RULE),
             ("user", "RULES:\n{rules}\n\nCONTRACT:\n{contract}")
         ])
 
@@ -278,7 +289,7 @@ def evaluate_contract(anonymized_text: str):
             - explanation including:
             - whether data risk is applicable
             - justification
-            """),
+            """ + ANONYMIZATION_RULE),
             ("user", "RULES:\n{rules}\n\nCONTRACT:\n{contract}")
         ])
 
@@ -309,7 +320,7 @@ def evaluate_contract(anonymized_text: str):
             Return:
             - termination_risk (0 to 1)
             - explanation
-            """),
+            """ + ANONYMIZATION_RULE),
             ("user", "RULES:\n{rules}\n\nCONTRACT:\n{contract}")
         ])
 
@@ -361,7 +372,7 @@ def evaluate_contract(anonymized_text: str):
             Generate:
             - final report (100–200 words)
             - final_score (0 to 1)
-            """)
+            """ + ANONYMIZATION_RULE)
         ])
 
         chain = prompt | llm.with_structured_output(Summarizer)
