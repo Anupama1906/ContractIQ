@@ -1,11 +1,11 @@
 # =========================
 # Core LangChain + Agents
 # =========================
-langchain==0.2.16
-langchain-core==0.2.38
-langchain-community==0.2.16
-langchain-deepseek
-langgraph==0.2.34
+langchain
+langchain-core
+langchain-community
+langchain-groq
+langgraph
 
 # =========================
 # Vector DB (Stable Version)
@@ -15,14 +15,14 @@ chromadb==0.5.3
 # =========================
 # Embeddings (CPU friendly)
 # =========================
-sentence-transformers==2.7.0
-langchain-huggingface==0.0.3
+sentence-transformers
+langchain-huggingface
 
 # =========================
 # NLP / NER
 # =========================
-spacy==3.7.5
-transformers==4.44.2
+spacy
+transformers
 
 # CPU Torch (IMPORTANT)
 torch --index-url https://download.pytorch.org/whl/cpu
@@ -30,8 +30,8 @@ torch --index-url https://download.pytorch.org/whl/cpu
 # =========================
 # Presidio (PII detection)
 # =========================
-presidio-analyzer==2.2.355
-presidio-anonymizer==2.2.355
+presidio-analyzer
+presidio-anonymizer
 
 # =========================
 # Document Processing
@@ -41,14 +41,14 @@ docling
 # =========================
 # UI
 # =========================
-streamlit==1.37.1
+streamlit
 
 # =========================
 # Utilities
 # =========================
-pydantic==2.8.2
-python-dotenv==1.2.2
-thefuzz==0.22.1
-python-Levenshtein==0.25.1
-numpy==1.26.4
-pandas==2.2.2
+pydantic
+python-dotenv
+thefuzz
+python-Levenshtein
+numpy
+pandas
