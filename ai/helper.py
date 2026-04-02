@@ -9,7 +9,6 @@ import uuid
 import json
 from typing import List
 from pydantic import BaseModel, Field
-from thefuzz import fuzz
 from langchain_core.documents import Document
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_core.prompts import ChatPromptTemplate
@@ -21,7 +20,21 @@ from docling.document_converter import DocumentConverter
 load_dotenv()
 
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
-
+configuration = {
+        "nlp_engine_name": "transformers",
+        "models": [
+            {
+                "lang_code": "en",
+                "model_name": {
+                    "spacy": "en_core_web_sm",
+                    "transformers": "dslim/bert-base-NER"
+                }
+            }
+        ]
+    }
+provider = NlpEngineProvider(nlp_configuration=configuration)
+nlp_engine = provider.create_engine()
+analyzer = AnalyzerEngine(nlp_engine=nlp_engine)
 
 def pdf_to_markdown(source: str):
     
@@ -59,18 +72,6 @@ def anonymizer(text: str):
             - Mapping of original entity text to placeholders.
     """
   
-    configuration = {
-        "nlp_engine_name": "transformers",
-        "models": [
-            {
-                "lang_code": "en",
-                "model_name": {
-                    "spacy": "en_core_web_sm",
-                    "transformers": "dslim/bert-base-NER"
-                }
-            }
-        ]
-    }
 
     def find_similar_entity(entity_text, entity_map, threshold=80):
         choices = list(entity_map.keys())
@@ -114,10 +115,6 @@ def anonymizer(text: str):
     entity_counters = {}
     entity_map = {}
 
-
-    provider = NlpEngineProvider(nlp_configuration=configuration)
-    nlp_engine = provider.create_engine()
-    analyzer = AnalyzerEngine(nlp_engine=nlp_engine)
 
     results = analyzer.analyze(text=text, language="en")
 
