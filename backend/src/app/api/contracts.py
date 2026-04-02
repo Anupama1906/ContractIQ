@@ -23,6 +23,9 @@ async def anonymize_contract(file: UploadFile = File(...)):
         # Generate unique ID
         document_id = str(uuid.uuid4())
 
+        if not file.filename:
+            raise HTTPException(status_code=400, detail="File name is missing")
+
         # Save uploaded file
         file_extension = file.filename.split(".")[-1]
         file_path = os.path.join(UPLOAD_DIR, f"{document_id}.{file_extension}")
@@ -34,13 +37,14 @@ async def anonymize_contract(file: UploadFile = File(...)):
         # Call anonymization service
         result = anonymize_document(file_path)
 
+
         # Save processed output (important for next step)
         processed_data = {
             "document_id": document_id,
             "file_path": file_path,
             "raw_text": result["raw_text"],
             "anonymized_text": result["anonymized_text"],
-            "entity_map": result["entity_map"],
+            "mapping_dict": result["mapping_dict"],
             "status": "ANONYMIZED"
         }
 
@@ -54,7 +58,7 @@ async def anonymize_contract(file: UploadFile = File(...)):
             "document_id": document_id,
             "raw_text": result["raw_text"],
             "anonymized_text": result["anonymized_text"],
-            "entity_map": result["entity_map"]
+            "mapping_dict": result["mapping_dict"]
         }
 
     except Exception as e:
@@ -92,7 +96,6 @@ async def evaluate_contract(request: EvaluateRequest):
         data["report"] = rag_result["report"]
         data["risk_score"] = rag_result["risk_score"]
         data["risk_level"] = rag_result["risk_level"]
-        data["audit_trail"] = rag_result["audit_trail"]
         data["status"] = "EVALUATED"
 
         with open(processed_file_path, "w") as f:
@@ -102,8 +105,7 @@ async def evaluate_contract(request: EvaluateRequest):
             "document_id": document_id,
             "report": rag_result["report"],
             "risk_score": rag_result["risk_score"],
-            "risk_level": rag_result["risk_level"],
-            "audit_trail": rag_result["audit_trail"]
+            "risk_level": rag_result["risk_level"]
         }
 
     except Exception as e:

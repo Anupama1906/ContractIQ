@@ -17,10 +17,14 @@ chromadb
 # =========================
 sentence-transformers
 langchain-huggingface
+sentence-transformers
+langchain-huggingface
 
 # =========================
 # NLP / NER
 # =========================
+spacy
+transformers
 spacy
 transformers
 
@@ -46,6 +50,12 @@ streamlit
 # =========================
 # Utilities
 # =========================
+pydantic
+python-dotenv
+thefuzz
+python-Levenshtein
+numpy
+pandas
 pydantic
 python-dotenv
 thefuzz
