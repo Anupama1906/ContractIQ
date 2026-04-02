@@ -13,14 +13,14 @@ from thefuzz import fuzz
 from langchain_core.documents import Document
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_core.prompts import ChatPromptTemplate
-from langchain_deepseek import ChatDeepSeek
+from langchain_groq import ChatGroq
 from langchain_community.vectorstores import FAISS
 from dotenv import load_dotenv
 from docling.document_converter import DocumentConverter
 
 load_dotenv()
 
-DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY")
+GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 
 
 def pdf_to_markdown(source: str):
@@ -206,10 +206,11 @@ def extract_rules(contract):
                     Returns an empty list if extraction fails.
     """
     
-    llm = ChatDeepSeek(
-        model="deepseek-chat",
+    llm = ChatGroq(
+        model="llama-3.3-70b-versatile",
         temperature=0,
-        api_key=DEEPSEEK_API_KEY)
+        api_key=GROQ_API_KEY
+    )
     
     prompt_to_rules = ChatPromptTemplate.from_messages([
         ("system", """You are a legal risk analysis expert.

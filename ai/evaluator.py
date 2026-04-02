@@ -7,7 +7,7 @@ from langgraph.graph import StateGraph, START, END
 from langchain_core.messages import BaseMessage, HumanMessage
 from langchain_core.prompts import ChatPromptTemplate
 from pydantic import BaseModel, Field
-from langchain_deepseek import ChatDeepSeek
+from langchain_groq import ChatGroq
 from helper import anonymizer, pdf_to_markdown
 from docling.document_converter import DocumentConverter
 from dotenv import load_dotenv
@@ -15,7 +15,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 
-DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY")
+GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 
 
 PERSIST_DIR = r"./chroma_hemas"
@@ -75,10 +75,10 @@ def evaluate_contract(source: str):
     client = chromadb.PersistentClient(path=PERSIST_DIR)
     collection = client.get_collection(name=COLLECTION_NAME)
 
-    llm = ChatDeepSeek(
-        model="deepseek-chat",
+    llm = ChatGroq(
+        model="llama-3.3-70b-versatile",
         temperature=0,
-        api_key=DEEPSEEK_API_KEY
+        api_key=GROQ_API_KEY
     )
 
     def format_rules(result):
