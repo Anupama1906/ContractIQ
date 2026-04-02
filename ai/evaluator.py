@@ -486,8 +486,4 @@ def evaluate_contract(anonymized_text: str):
     return state
 
 
-SOURCE = "C:/Users/Lenovo/Downloads/Contracts_dataset_1/full_contract_pdf/Part_II/Hosting/CENTRACKINTERNATIONALINC_10_29_1999-EX-10.3-WEB SITE HOSTING AGREEMENT.PDF"
-    
-evaluate_contract(SOURCE)
-
 
