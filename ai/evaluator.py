@@ -67,10 +67,7 @@ class Summarizer(BaseModel):
     final_score: float = Field(description="Final aggregated risk score between 0 and 1.")
 
 
-def evaluate_contract(source: str):
-    
-    text = pdf_to_markdown(source)
-    text = " ".join(text.split())
+def evaluate_contract(anonymized_text: str):
     
     client = chromadb.PersistentClient(path=PERSIST_DIR)
     collection = client.get_collection(name=COLLECTION_NAME)
@@ -412,7 +409,7 @@ def evaluate_contract(source: str):
 
     app = graph.compile()
 
-    anonymized_text, entity_map = anonymizer(text)
+    anonymized_text = " ".join(anonymized_text.split())
 
     initial_state = {
         "text": anonymized_text,
