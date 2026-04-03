@@ -13,37 +13,48 @@ class RiskReportPDF(FPDF):
         self.cell(0, 10, f"Page {self.page_no()}", align="C")
 
 def generate_risk_pdf(data: dict, output_path: str):
+    
+    # Remap tokens
+    mapping_dict = data.get("mapping_dict", {})
+    report_text = data.get("report", "No detailed report available.")
+    for placeholder, original in mapping_dict.items():
+        report_text = report_text.replace(placeholder, original)
+
+    # Sanitize text for fpdf (remove unsupported characters)
+    def sanitize(text: str) -> str:
+        return text.encode('latin-1', errors='replace').decode('latin-1')
+
     pdf = RiskReportPDF()
     pdf.add_page()
     
     # Summary Section
     pdf.set_font("Arial", "B", 12)
-    pdf.cell(0, 10, f"Document ID: {data['document_id']}", ln=True)
-    pdf.cell(0, 10, f"Overall Risk Score: {data.get('risk_score', 'N/A')}", ln=True)
+    pdf.cell(0, 10, sanitize(f"Document ID: {data['document_id']}"), ln=True)
+    pdf.cell(0, 10, sanitize(f"Overall Risk Score: {data.get('risk_score', 'N/A')}"), ln=True)
     pdf.ln(5)
 
-    # Risk Metrics Table-like display
+    # Risk Breakdown
     pdf.set_font("Arial", "B", 14)
     pdf.cell(0, 10, "Risk Breakdown", ln=True)
     pdf.set_font("Arial", "", 11)
     
-    # Mapping details if available
     metrics = ["legal_risk", "financial_risk", "compliance_risk", "operational_risk", "data_risk", "termination_risk"]
     for metric in metrics:
         score = data.get(metric, 0.0)
-        pdf.cell(0, 8, f"- {metric.replace('_', ' ').title()}: {score}", ln=True)
+        pdf.cell(0, 8, sanitize(f"- {metric.replace('_', ' ').title()}: {score}"), ln=True)
     
     pdf.ln(10)
 
-    # Main Report (Markdown parsing logic)
+    # Detailed Analysis
     pdf.set_font("Arial", "B", 14)
     pdf.cell(0, 10, "Detailed Analysis", ln=True)
     pdf.set_font("Arial", "", 11)
-    
-    report_text = data.get("report", "No detailed report available.")
-    # Basic Markdown-to-PDF logic: Split by lines and handle headers
+
     for line in report_text.split('\n'):
-        if line.startswith('##'):
+        line = sanitize(line)
+        if not line.strip():
+            pdf.ln(3)
+        elif line.startswith('##'):
             pdf.set_font("Arial", "B", 12)
             pdf.multi_cell(0, 8, line.replace('##', '').strip())
             pdf.set_font("Arial", "", 11)
