@@ -1,0 +1,12 @@
+{
+    "document_id": "df854184-9ecf-4cb7-a7cc-b003af81fb2c",
+    "file_path": "storage/uploads\\df854184-9ecf-4cb7-a7cc-b003af81fb2c.pdf",
+    "raw_text": "PHARMACEUTICAL DISTRIBUTION AGREEMENT\n\nThis agreement is entered between Hemas Pharmaceuticals Ltd and GlobalMed International on 15 March 2025. 1. DISTRIBUTION RIGHTS GlobalMed grants Hemas exclusive distribution rights for products in Sri Lanka territory. 2. PAYMENT TERMS Payment shall be made within 90 days of invoice date. Late payments incur no penalty. 3. TERMINATION Either party may terminate this agreement immediately without cause or notice period. 4. LIABILITY Neither party shall be liable for any damages of any kind under any circumstances. 5. CONFIDENTIALITY\n\nBoth parties agree to maintain confidentiality of business information.",
+    "anonymized_text": "PHARMACEUTICAL DISTRIBUTION AGREEMENT\n\nThis agreement is entered between <ORGANIZATION_1> and <ORGANIZATION_2> on 15 March 2025. 1. DISTRIBUTION RIGHTS <ORGANIZATION_2> grants <ORGANIZATION_1> exclusive distribution rights for products in <LOCATION_1> territory. 2. PAYMENT TERMS Payment shall be made within 90 days of invoice date. Late payments incur no penalty. 3. TERMINATION Either party may terminate this agreement immediately without cause or notice period. 4. LIABILITY Neither party shall be liable for any damages of any kind under any circumstances. 5. CONFIDENTIALITY\n\nBoth parties agree to maintain confidentiality of business information.",
+    "mapping_dict": {
+        "<LOCATION_1>": "Sri Lanka",
+        "<ORGANIZATION_1>": "Hemas",
+        "<ORGANIZATION_2>": "GlobalMed"
+    },
+    "status": "ANONYMIZED"
+}

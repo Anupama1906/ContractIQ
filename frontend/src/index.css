@@ -1,0 +1,37 @@
+@import "tailwindcss";
+
+@theme {
+  --font-headline: "Manrope", ui-sans-serif, system-ui, sans-serif;
+  --font-body: "Inter", ui-sans-serif, system-ui, sans-serif;
+  
+  --color-primary: #0052ff;
+  --color-primary-container: #003ec7;
+  --color-surface: #f8f9ff;
+  --color-surface-container: #e5eeff;
+  --color-surface-container-low: #eff4ff;
+  --color-surface-container-lowest: #ffffff;
+  --color-on-surface: #0b1c30;
+  --color-on-surface-variant: #434656;
+  --color-outline-variant: rgba(195, 197, 217, 0.4);
+  --color-error: #ba1a1a;
+  --color-error-container: #ffdad6;
+}
+
+@layer base {
+  @import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&family=Inter:wght@400;500;600&display=swap');
+
+  body {
+    @apply bg-surface font-body text-on-surface antialiased transition-colors duration-300;
+  }
+}
+
+@utility ghost-border {
+  border: 1px solid var(--color-outline-variant);
+}
+
+@utility editorial-card {
+  background-color: var(--color-surface-container-lowest);
+  border-radius: 0.75rem;
+  border: 1px solid var(--color-outline-variant);
+  box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+}
