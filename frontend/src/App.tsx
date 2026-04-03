@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { View, Notification } from './types';
+import { View } from './types';
 import Layout from './components/Layout';
 import AuditDashboard from './components/AuditDashboard';
 import Anonymizer from './components/Anonymizer';
@@ -36,29 +36,6 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem('contractiq_report', finalReport);
   }, [finalReport]);
-
-  const [notifications, setNotifications] = useState<Notification[]>(() => {
-    const saved = localStorage.getItem('contractiq_notifications');
-    if (saved) return JSON.parse(saved);
-    return [
-      {
-        id: '1',
-        documentName: '1.pdf',
-        isRead: false,
-        timestamp: new Date().toISOString()
-      }
-    ];
-  });
-
-  useEffect(() => {
-    localStorage.setItem('contractiq_notifications', JSON.stringify(notifications));
-  }, [notifications]);
-
-  const markNotificationAsRead = (id: string) => {
-    setNotifications(prev => prev.map(n => n.id === id ? { ...n, isRead: true } : n));
-    setAppStep('report');
-    setCurrentView('report');
-  };
 
   const handleViewReport = (report: string) => {
     setFinalReport(report);
@@ -105,7 +82,7 @@ export default function App() {
       case 'anonymize':
         return <Anonymizer onAudit={handleAnonymizeComplete} onResetUpload={handleResetUpload} />;
       case 'report':
-        return <Report markdown={finalReport} />;
+        return <Report markdown={finalReport} documentId={documentId ?? ''} />;
       default:
         return <Anonymizer onAudit={handleAnonymizeComplete} onResetUpload={handleResetUpload} />;
     }
@@ -116,8 +93,6 @@ export default function App() {
       currentView={currentView}
       onViewChange={handleViewChange}
       appStep={appStep}
-      notifications={notifications}
-      onMarkAsRead={markNotificationAsRead}
     >
       <AnimatePresence mode="wait">
         <motion.div

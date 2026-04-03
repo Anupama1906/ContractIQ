@@ -1,6 +1,6 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { Bell, FileText, User, Lock } from 'lucide-react';
-import { View, Notification } from '../types';
+import React from 'react';
+import { User, Lock } from 'lucide-react';
+import { View } from '../types';
 
 type AppStep = 'upload' | 'audit' | 'report';
 
@@ -9,24 +9,9 @@ interface LayoutProps {
   currentView: View;
   onViewChange: (view: View) => void;
   appStep: AppStep;
-  notifications: Notification[];
-  onMarkAsRead: (id: string) => void;
 }
 
-export default function Layout({ children, currentView, onViewChange, appStep, notifications, onMarkAsRead }: LayoutProps) {
-  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
-  const dropdownRef = useRef<HTMLDivElement>(null);
-  const unreadCount = notifications.filter(n => !n.isRead).length;
-
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setIsNotificationsOpen(false);
-      }
-    }
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
+export default function Layout({ children, currentView, onViewChange, appStep }: LayoutProps) {
 
   return (
     <div className="min-h-screen flex flex-col bg-surface">
@@ -75,66 +60,8 @@ export default function Layout({ children, currentView, onViewChange, appStep, n
           </nav>
         </div>
 
-        <div className="flex items-center gap-4">
-          <div className="relative" ref={dropdownRef}>
-            <button 
-              onClick={() => setIsNotificationsOpen(!isNotificationsOpen)}
-              className="p-2 text-on-surface-variant hover:bg-surface-container-low rounded-full transition-colors relative"
-            >
-              <Bell className="w-5 h-5" />
-              {unreadCount > 0 && (
-                <span className="absolute top-0 right-0 bg-error text-white text-[9px] font-bold h-4 min-w-[16px] flex items-center justify-center rounded-full border-2 border-white">
-                  {unreadCount}
-                </span>
-              )}
-            </button>
-
-            {isNotificationsOpen && (
-              <div className="absolute right-0 mt-2 w-80 bg-surface-container-lowest editorial-card shadow-xl z-[60] overflow-hidden">
-                <div className="p-4 border-b border-outline-variant/20 bg-surface-container-low">
-                  <h3 className="font-headline font-bold text-sm">Notifications</h3>
-                </div>
-                <div className="max-h-96 overflow-y-auto">
-                  {notifications.length === 0 ? (
-                    <div className="p-8 text-center text-on-surface-variant text-sm italic">
-                      No notifications yet
-                    </div>
-                  ) : (
-                    notifications.map((n) => (
-                      <button
-                        key={n.id}
-                        onClick={() => {
-                          onMarkAsRead(n.id);
-                          setIsNotificationsOpen(false);
-                        }}
-                        className={`w-full text-left p-4 hover:bg-surface-container-low transition-colors flex gap-3 items-start border-b border-outline-variant/10 last:border-0 ${
-                          !n.isRead ? 'bg-primary/5' : ''
-                        }`}
-                      >
-                        <div className={`p-2 rounded-lg ${!n.isRead ? 'bg-primary/10 text-primary' : 'bg-surface-container text-on-surface-variant'}`}>
-                          <FileText className="w-4 h-4" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className={`text-xs leading-relaxed ${!n.isRead ? 'font-semibold text-on-surface' : 'text-on-surface-variant'}`}>
-                            Risk report for the document <span className="text-primary">{n.documentName}</span> is finalized. Go to Report View.
-                          </p>
-                          <span className="text-[10px] text-on-surface-variant mt-1 block">
-                            {new Date(n.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                          </span>
-                        </div>
-                        {!n.isRead && (
-                          <div className="w-2 h-2 rounded-full bg-primary mt-1.5 flex-shrink-0" />
-                        )}
-                      </button>
-                    ))
-                  )}
-                </div>
-              </div>
-            )}
-          </div>
-          <div className="h-8 w-8 rounded-full overflow-hidden ghost-border ml-2 bg-primary/10 flex items-center justify-center text-primary">
-            <User className="w-5 h-5" />
-          </div>
+        <div className="h-8 w-8 rounded-full overflow-hidden ghost-border bg-primary/10 flex items-center justify-center text-primary">
+          <User className="w-5 h-5" />
         </div>
       </header>
 
