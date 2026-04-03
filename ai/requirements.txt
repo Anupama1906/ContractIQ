@@ -10,7 +10,7 @@ langgraph
 # =========================
 # Vector DB (Stable Version)
 # =========================
-chromadb==0.5.3
+chromadb==1.5.5
 
 # =========================
 # Embeddings (CPU friendly)

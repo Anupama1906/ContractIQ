@@ -95,18 +95,21 @@ async def evaluate_contract(request: EvaluateRequest):
 
         # Streaming generator to pipe updates from ai/evaluator.py to the frontend
         def event_generator():
-            # Iterate through the generator yielded by the service
             for step_data in evaluate_document_stream(anonymized_text):
-                # Update status locally if the final agent finishes
-                if step_data["agent"] == "evaluate":
+                agent = step_data.get("agent")
+                
+                # Save each agent's risk score as it streams in
+                if agent in ("legal", "financial", "compliance", "operational", "data", "termination"):
+                    data[f"{agent}_risk"] = step_data.get("risk_score", 0.0)
+
+                if agent == "evaluate":
                     data["status"] = "EVALUATED"
                     data["report"] = step_data.get("final_report")
                     data["risk_score"] = step_data.get("risk_score")
-                    
+
                     with open(processed_file_path, "w") as f:
                         json.dump(data, f, indent=4)
 
-                # Yield as Newline-Delimited JSON (NDJSON)
                 yield json.dumps(step_data) + "\n"
 
         return StreamingResponse(event_generator(), media_type="application/x-ndjson")
