@@ -1,16 +1,19 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Bell, FileText, User } from 'lucide-react';
+import { Bell, FileText, User, Lock } from 'lucide-react';
 import { View, Notification } from '../types';
+
+type AppStep = 'upload' | 'audit' | 'report';
 
 interface LayoutProps {
   children: React.ReactNode;
   currentView: View;
   onViewChange: (view: View) => void;
+  appStep: AppStep;
   notifications: Notification[];
   onMarkAsRead: (id: string) => void;
 }
 
-export default function Layout({ children, currentView, onViewChange, notifications, onMarkAsRead }: LayoutProps) {
+export default function Layout({ children, currentView, onViewChange, appStep, notifications, onMarkAsRead }: LayoutProps) {
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const unreadCount = notifications.filter(n => !n.isRead).length;
@@ -31,35 +34,43 @@ export default function Layout({ children, currentView, onViewChange, notificati
         <div className="flex items-center gap-8">
           <span className="text-xl font-bold tracking-tight text-on-surface font-headline">ContractIQ</span>
           <nav className="hidden md:flex gap-6 items-center">
-            <button 
+            <button
               onClick={() => onViewChange('anonymize')}
-              className={`text-sm font-medium transition-colors duration-200 pb-1 border-b-2 ${
-                currentView === 'anonymize' 
-                  ? 'text-primary border-primary' 
+              className={`text-sm font-medium transition-colors duration-200 pb-1 border-b-2 flex items-center gap-2 ${
+                currentView === 'anonymize'
+                  ? 'text-primary border-primary'
                   : 'text-on-surface-variant hover:text-on-surface border-transparent'
               }`}
             >
               Upload & anonymize
             </button>
-            <button 
+            <button
               onClick={() => onViewChange('audit')}
-              className={`text-sm font-medium transition-colors duration-200 pb-1 border-b-2 ${
-                currentView === 'audit' 
-                  ? 'text-primary border-primary' 
-                  : 'text-on-surface-variant hover:text-on-surface border-transparent'
+              disabled={appStep === 'upload'}
+              className={`text-sm font-medium transition-colors duration-200 pb-1 border-b-2 flex items-center gap-2 ${
+                appStep === 'upload'
+                  ? 'text-on-surface-variant/50 border-transparent cursor-not-allowed'
+                  : currentView === 'audit'
+                    ? 'text-primary border-primary'
+                    : 'text-on-surface-variant hover:text-on-surface border-transparent'
               }`}
             >
               Audit
+              {appStep === 'upload' && <Lock className="w-3 h-3" />}
             </button>
-            <button 
+            <button
               onClick={() => onViewChange('report')}
-              className={`text-sm font-medium transition-colors duration-200 pb-1 border-b-2 ${
-                currentView === 'report' 
-                  ? 'text-primary border-primary' 
-                  : 'text-on-surface-variant hover:text-on-surface border-transparent'
+              disabled={appStep !== 'report'}
+              className={`text-sm font-medium transition-colors duration-200 pb-1 border-b-2 flex items-center gap-2 ${
+                appStep !== 'report'
+                  ? 'text-on-surface-variant/50 border-transparent cursor-not-allowed'
+                  : currentView === 'report'
+                    ? 'text-primary border-primary'
+                    : 'text-on-surface-variant hover:text-on-surface border-transparent'
               }`}
             >
               Report
+              {appStep !== 'report' && <Lock className="w-3 h-3" />}
             </button>
           </nav>
         </div>
