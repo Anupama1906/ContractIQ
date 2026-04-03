@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware # Add this
-from app.api import contracts
+from backend.src.app.api import contracts
 
 app = FastAPI()
 

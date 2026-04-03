@@ -66,15 +66,15 @@ export default function App() {
       case 'anonymize':
         return <Anonymizer onAudit={handleAnonymizeComplete} />;
       case 'report':
-        return <Report markdown={finalReport} />;
+        return <Report markdown={finalReport} documentId={documentId ?? ''} />;
       default:
         return <AuditDashboard onViewReport={handleViewReport} documentId={documentId} />;
     }
   };
 
   return (
-    <Layout 
-      currentView={currentView} 
+    <Layout
+      currentView={currentView}
       onViewChange={setCurrentView}
       notifications={notifications}
       onMarkAsRead={markNotificationAsRead}

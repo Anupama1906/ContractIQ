@@ -5,9 +5,9 @@ from fastapi import APIRouter, UploadFile, File, HTTPException
 from fastapi.responses import StreamingResponse, FileResponse
 from pydantic import BaseModel
 
-from app.services.anonymization_service import anonymize_document
-from app.services.rag_service import evaluate_document_stream
-from app.services.pdf_service import generate_risk_pdf
+from backend.src.app.services.anonymization_service import anonymize_document
+from backend.src.app.services.rag_service import evaluate_document_stream
+from backend.src.app.services.pdf_service import generate_risk_pdf
 
 router = APIRouter()
 
