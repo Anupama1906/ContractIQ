@@ -93,20 +93,34 @@ async def evaluate_contract(request: EvaluateRequest):
 
         anonymized_text = data["anonymized_text"]
 
+        def replace_tokens(text: str, mapping_dict: dict) -> str:
+            for placeholder, original in mapping_dict.items():
+                text = text.replace(placeholder, original)
+            return text
+
         # Streaming generator to pipe updates from ai/evaluator.py to the frontend
         def event_generator():
-            # Iterate through the generator yielded by the service
+            mapping_dict = data.get("mapping_dict", {})  # { "<PERSON_1>": "John Smith", ... }
+
             for step_data in evaluate_document_stream(anonymized_text):
-                # Update status locally if the final agent finishes
-                if step_data["agent"] == "evaluate":
+                agent = step_data.get("agent")
+
+                # Remap placeholders in final report
+                if "final_report" in step_data:
+                    step_data["final_report"] = replace_tokens(step_data["final_report"], mapping_dict)
+
+                # Accumulate scores
+                if agent in ("legal", "financial", "compliance", "operational", "data", "termination"):
+                    data[f"{agent}_risk"] = step_data.get("risk_score", 0.0)
+
+                if agent == "evaluate":
                     data["status"] = "EVALUATED"
-                    data["report"] = step_data.get("final_report")
+                    data["report"] = step_data.get("final_report")  
                     data["risk_score"] = step_data.get("risk_score")
-                    
+
                     with open(processed_file_path, "w") as f:
                         json.dump(data, f, indent=4)
 
-                # Yield as Newline-Delimited JSON (NDJSON)
                 yield json.dumps(step_data) + "\n"
 
         return StreamingResponse(event_generator(), media_type="application/x-ndjson")

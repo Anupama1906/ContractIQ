@@ -31,11 +31,22 @@ interface LogEntry {
   message: string;
 }
 
+interface AuditData {
+  currentIndex: number;
+  logs: LogEntry[];
+  isComplete: boolean;
+  finalReport: string;
+  riskScores: Record<string, number>;
+  documentId: string;
+  finalRiskScore: number | null;
+}
+
 export default function AuditDashboard({ onViewReport, documentId }: { onViewReport: (report: string) => void, documentId: string | null }) {
   const [currentIndex, setCurrentIndex] = useState<number>(-1);
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [isComplete, setIsComplete] = useState(false);
   const [finalReport, setFinalReport] = useState<string>("");
+  const [finalRiskScore, setFinalRiskScore] = useState<number | null>(null);
   const [riskScores, setRiskScores] = useState<Record<string, number>>({
     legal: 0,
     financial: 0,
@@ -44,8 +55,36 @@ export default function AuditDashboard({ onViewReport, documentId }: { onViewRep
     data: 0,
     termination: 0,
   });
+  const [hasLoadedCache, setHasLoadedCache] = useState(false);
 
   const logEndRef = useRef<HTMLDivElement>(null);
+
+  // Load cached audit data if it exists for this documentId
+  useEffect(() => {
+    if (!documentId || hasLoadedCache) return;
+
+    const cached = localStorage.getItem('contractiq_audit_data');
+    if (cached) {
+      try {
+        const auditData: AuditData = JSON.parse(cached);
+        // Only restore cache if it's for the same documentId
+        if (auditData.documentId === documentId) {
+          setCurrentIndex(auditData.currentIndex);
+          setLogs(auditData.logs);
+          setIsComplete(auditData.isComplete);
+          setFinalReport(auditData.finalReport);
+          setFinalRiskScore(auditData.finalRiskScore);
+          setRiskScores(auditData.riskScores);
+          setHasLoadedCache(true);
+          return;
+        }
+      } catch (err) {
+        console.error("Error loading cached audit data:", err);
+      }
+    }
+
+    setHasLoadedCache(true);
+  }, [documentId, hasLoadedCache]);
 
   // Auto-scroll the analysis log as new agents report in
   useEffect(() => {
@@ -54,7 +93,7 @@ export default function AuditDashboard({ onViewReport, documentId }: { onViewRep
 
   // Main Streaming Logic
   useEffect(() => {
-    if (!documentId || currentIndex !== -1) return;
+    if (!documentId || !hasLoadedCache || currentIndex !== -1) return;
 
     const startLiveAudit = async () => {
       try {
@@ -104,6 +143,7 @@ export default function AuditDashboard({ onViewReport, documentId }: { onViewRep
             // 3. Finalize Evaluation
             if (stepData.agent === 'evaluate') {
               setFinalReport(stepData.final_report || "");
+              setFinalRiskScore(stepData.risk_score ?? null);
               setIsComplete(true);
               setCurrentIndex(8); // Jump to final stage in UI
             }
@@ -115,7 +155,24 @@ export default function AuditDashboard({ onViewReport, documentId }: { onViewRep
     };
 
     startLiveAudit();
-  }, [documentId]);
+  }, [documentId, hasLoadedCache]);
+
+  // Persist audit data to localStorage whenever it changes
+  useEffect(() => {
+    if (!documentId || currentIndex === -1) return;
+
+    const auditData: AuditData = {
+      currentIndex,
+      logs,
+      isComplete,
+      finalReport,
+      finalRiskScore,
+      riskScores,
+      documentId,
+    };
+
+    localStorage.setItem('contractiq_audit_data', JSON.stringify(auditData));
+  }, [currentIndex, logs, isComplete, finalReport, finalRiskScore, riskScores, documentId]);
 
   const getStageStatus = (stageId: string) => {
     if (stageId === 'retrieve') return 'completed';
@@ -125,15 +182,13 @@ export default function AuditDashboard({ onViewReport, documentId }: { onViewRep
     return 'pending';
   };
 
-  const finalRiskScore = isComplete ? riskScores.legal : null; // Logic can be updated to use weighted average
-
   const getVerdict = (score: number) => {
     if (score >= 0.7) return { label: 'High risk — escalation required', color: 'text-error', bgColor: 'bg-error-container/10', borderColor: 'border-error' };
     if (score >= 0.4) return { label: 'Moderate risk — review recommended', color: 'text-amber-600', bgColor: 'bg-amber-50', borderColor: 'border-amber-500' };
     return { label: 'Low risk — approved', color: 'text-green-600', bgColor: 'bg-green-50', borderColor: 'border-green-500' };
   };
 
-  const verdict = isComplete ? getVerdict(0.45) : null; // Hardcoded 0.45 for demo or calculated from scores
+  const verdict = isComplete && finalRiskScore !== null ? getVerdict(finalRiskScore) : null;
 
   return (
     <div className="flex flex-col gap-8">
@@ -198,7 +253,7 @@ export default function AuditDashboard({ onViewReport, documentId }: { onViewRep
         <div className="flex flex-col gap-6">
           <div className={`editorial-card p-6 border-l-4 flex items-start gap-4 transition-all duration-500 ${verdict ? `${verdict.borderColor} ${verdict.bgColor}` : 'border-outline-variant bg-surface-container-low'}`}>
             <div className="flex-shrink-0">
-              {isComplete ? <span className={`text-4xl font-extrabold font-headline tracking-tighter ${verdict?.color}`}>45</span> : <Loader2 className="w-8 h-8 text-primary animate-spin" />}
+              {isComplete && finalRiskScore !== null ? <span className={`text-4xl font-extrabold font-headline tracking-tighter ${verdict?.color}`}>{Math.round(finalRiskScore * 100)}</span> : <Loader2 className="w-8 h-8 text-primary animate-spin" />}
               <div className={`text-[10px] font-bold uppercase mt-1 ${verdict?.color || 'text-on-surface-variant'}`}>Risk Score</div>
             </div>
             <div className="flex-1">

@@ -9,7 +9,7 @@ interface AnonymizeResponse {
   mapping_dict: Record<string, string>;
 }
 
-export default function Anonymizer({ onAudit }: { onAudit: () => void }) {
+export default function Anonymizer({ onAudit, onResetUpload }: { onAudit: () => void; onResetUpload: () => void }) {
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [data, setData] = useState<AnonymizeResponse | null>(null);
@@ -30,6 +30,7 @@ export default function Anonymizer({ onAudit }: { onAudit: () => void }) {
     setIsProcessing(true);
     setIsStored(false);
     setData(null);
+    onResetUpload();
     const formData = new FormData();
     formData.append('file', file);
 
