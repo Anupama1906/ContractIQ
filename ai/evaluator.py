@@ -85,7 +85,7 @@ def evaluate_contract(anonymized_text: str):
     
 
     llm = ChatGroq(
-        model="llama-3.3-70b-versatile",
+        model="meta-llama/llama-4-scout-17b-16e-instruct",
         temperature=0,
         api_key=GROQ_API_KEY
     )
@@ -338,49 +338,38 @@ def evaluate_contract(anonymized_text: str):
 
 
     def evaluator(state: ContractState):
-        
-        """
-        Aggregate individual risk scores and generate a final risk report.
-
-        Uses an LLM to:
-            - Summarize agent comments
-            - Combine risk scores
-            - Produce a final structured report
-
-        Args:
-            state (ContractState): Current state containing all risk scores and comments.
-
-        Returns:
-            dict:
-                - final_score (float): Aggregated risk score (0 to 1)
-                - final_report (str): Generated risk analysis report
-        """
-        
         prompt = ChatPromptTemplate.from_messages([
-            ("system", "You are a contract risk evaluator. You MUST use specific Markdown headers."),
-            ("user", """
-            COMMENTS: {comments}
-            RISK SCORES: {risk}
+            ("system", """You are a contract risk evaluator.
+                
+        You MUST respond using the provided JSON tool/function schema.
+        Do NOT write markdown. Do NOT write prose. 
+        ONLY call the structured output function with the required fields:
+        - risk_analyzed_report: the full markdown report as a string
+        - final_score: a float between 0 and 1
 
-            Generate the report using EXACTLY this structure:
+        """),
+                ("user", """
+        COMMENTS: {comments}
+        RISK SCORES: {risk}
 
-            ## Overall Risk Profile: [SEVERITY] ([SCORE])
-            [Provide a 2-sentence executive summary here]
+        Generate the report using EXACTLY this structure inside risk_analyzed_report:
 
-            ## Risk Areas
-            **[Title] ([Score]) - [Severity]**
-            - [Point 1]
-            - [Point 2]
+        ## Overall Risk Profile: [SEVERITY] ([SCORE])
+        [2-sentence executive summary]
 
-            ## Recommendations
-            1. **[Action]** [Description]
-            2. **[Action]** [Description]
+        ## Risk Areas
+        **[Title] ([Score]) - [Severity]**
+        - [Point 1]
+        - [Point 2]
 
-            FINAL RISK SCORE: [SCORE]
-            """ + ANONYMIZATION_RULE)
-        ])
+        ## Recommendations
+        1. **[Action]** [Description]
 
-        chain = prompt | llm.with_structured_output(Summarizer)
+        FINAL RISK SCORE: [SCORE]
+        """ + ANONYMIZATION_RULE)
+            ])
+
+        chain = prompt | llm.with_structured_output(Summarizer, method="function_calling")
 
         risk_json = json.dumps({
             "legal_risk": state["legal_risk"],

@@ -14,7 +14,7 @@ uvicorn[standard]==0.32.1
 python-multipart==0.0.22
 
 # --- PDF generation ---
-fpdf2==2.8.1
+reportlab==3.7.4
 
 # --- Core LangChain stack ---
 langchain==0.3.14

@@ -208,7 +208,7 @@ def extract_rules(contract):
     """
     
     llm = ChatGroq(
-        model="llama-3.3-70b-versatile",
+        model="meta-llama/llama-4-scout-17b-16e-instruct",
         temperature=0,
         api_key=GROQ_API_KEY
     )
