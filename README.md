@@ -1,322 +1,206 @@
-# ContractIQ 🔍
+# ContractIQ
 
-### AI-Powered Legal Document Auditing & Risk Mitigation System
-
-**AITHON 2026 — Team_404 | University of Moratuwa**
-**Challenge Track:** D2D Corporate Use Cases | AI Powered Automation
-**Target SBU:** Centre of Excellence (COE) — Hemas Holdings PLC
-
----
-
-## Overview
-
-ContractIQ is a multi-agent AI system that automates legal contract risk auditing for the Hemas Centre of Excellence. It replaces a manual 3–5 day contract review process with an adversarial AI pipeline that produces a structured risk report in under 2 minutes.
-
-The system combines:
-
-- **Microsoft Presidio + BERT NER** for local PII anonymization before any data leaves the environment
-- **LangGraph multi-agent orchestration** with specialist Legal, Financial, and Compliance agents
-- **DeepSeek / Groq LLM** for structured risk analysis with Pydantic output schemas
-- **Fuzzy entity matching** via `thefuzz` to handle entity variations across a document
-
-### Key Output (from live test run)
-
-```
-FINAL SCORE: 0.28 (Low-Moderate Risk)
-Elapsed time: 83.78s
-
-"This Mutual Non-Disclosure Agreement presents a moderate overall risk
-profile... broad legal process exemptions with minimal 7-day notice,
-unilateral withdrawal rights with only 10 days notice, no warranties
-on information accuracy..."
-```
+An AI-powered contract risk analysis tool. Upload a contract PDF, anonymize PII, then run a multi-agent adversarial audit that scores legal, financial, compliance, operational, data, and termination risk — with a full downloadable PDF report.
 
 ---
 
 ## Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                  LOCAL ENVIRONMENT (Secure Zone)             │
-│                                                             │
-│  [Contract PDF/DOCX]                                        │
-│        │                                                    │
-│        ▼                                                    │
-│  ┌─────────────┐    Docling parses PDF/DOCX                 │
-│  │  Ingestion  │    preserving structure & tables           │
-│  └──────┬──────┘                                            │
-│         │ raw text                                          │
-│         ▼                                                   │
-│  ┌──────────────────┐   Presidio Analyzer +                 │
-│  │  PII Anonymizer  │   dslim/bert-base-NER transformer     │
-│  │  (Presidio+BERT) │   thefuzz for entity deduplication    │
-│  └──────┬───────────┘                                       │
-│         │ anonymized text + entity_map                      │
-│         │                                                   │
-│  ░░░░░░ PRIVACY BOUNDARY ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░  │
-└─────────┼───────────────────────────────────────────────────┘
-          │ (only anonymized text crosses boundary)
-          ▼
-┌─────────────────────────────────────────────────────────────┐
-│                  LANGGRAPH AGENT PIPELINE                    │
-│                                                             │
-│  ┌──────────────┐                                           │
-│  │ Legal Agent  │ → legal_risk (0-1) + comment             │
-│  └──────┬───────┘                                           │
-│         │                                                   │
-│  ┌──────▼──────────┐                                        │
-│  │ Financial Agent │ → financial_risk (0-1) + comment      │
-│  └──────┬──────────┘                                        │
-│         │                                                   │
-│  ┌──────▼──────────────┐                                    │
-│  │  Compliance Agent   │ → compliance_risk (0-1) + comment │
-│  └──────┬──────────────┘                                    │
-│         │                                                   │
-│  ┌──────▼──────────┐                                        │
-│  │    Evaluator    │ → final_score + risk_report            │
-│  └─────────────────┘                                        │
-└─────────────────────────────────────────────────────────────┘
-          │
-          ▼
-   ┌──────────────┐
-   │ De-anonymize │ → restore original entity values
-   └──────┬───────┘
-          ▼
-   [ Final Risk Report ]
+contractiq/
+├── ai/                         # AI pipeline (LangGraph agents + helpers)
+│   ├── evaluator.py            # Multi-agent LangGraph risk evaluation graph
+│   ├── helper.py               # PDF→Markdown, PII anonymizer, RAG/ChromaDB utils
+│   └── chroma_hemas/           # ChromaDB vector store (auto-created on first run)
+│
+├── backend/                    # FastAPI backend
+│   ├── main.py                 # App entry point + CORS config
+│   ├── requirements.txt        # Python dependencies
+│   └── src/app/
+│       ├── api/contracts.py    # REST endpoints (anonymize, evaluate, download)
+│       └── services/
+│           ├── anonymization_service.py
+│           ├── rag_service.py
+│           └── pdf_service.py
+│
+├── frontend/                   # React + Vite + Tailwind frontend
+│   ├── src/
+│   │   ├── App.tsx
+│   │   ├── main.tsx
+│   │   ├── index.css
+│   │   ├── types.ts
+│   │   └── components/
+│   │       ├── Anonymizer.tsx
+│   │       ├── AuditDashboard.tsx
+│   │       ├── Layout.tsx
+│   │       └── Report.tsx
+│   └── package.json
+│
+└── storage/                    # Runtime file storage (auto-created)
+    ├── uploads/                # Uploaded contract PDFs
+    └── processed/              # Anonymized JSON + generated PDFs
 ```
 
 ---
 
-## Tech Stack
+## Prerequisites
 
-| Layer                | Technology                                  | Purpose                                     |
-| -------------------- | ------------------------------------------- | ------------------------------------------- |
-| Document Ingestion   | `docling`                                   | Parse PDF/DOCX preserving layout and tables |
-| PII Detection        | `presidio-analyzer` + `presidio-anonymizer` | Enterprise-grade entity detection           |
-| NER Model            | `dslim/bert-base-NER` (HuggingFace)         | Transformer-based named entity recognition  |
-| Entity Deduplication | `thefuzz`                                   | Fuzzy matching to catch entity variations   |
-| Agent Orchestration  | `LangGraph`                                 | Stateful multi-agent workflow graph         |
-| LLM                  | `DeepSeek` / `Groq (Llama 3.3 70B)`         | Structured risk analysis                    |
-| Structured Output    | `Pydantic` + `langchain structured_output`  | Type-safe agent responses                   |
-| Runtime              | `Google Colab` (Python 3.12)                | Development and execution environment       |
+| Tool | Version | Notes |
+|------|---------|-------|
+| Python | 3.10 – 3.12 | 3.11 recommended |
+| Node.js | 18+ | 20 LTS recommended |
+| npm | 9+ | Comes with Node |
+
+You also need a **Groq API key** (free): https://console.groq.com
 
 ---
 
-## Agent Design
+## Setup
 
-The pipeline uses a **LangGraph StateGraph** with four sequential nodes:
-
-### State Schema
-
-```python
-class ContractState(TypedDict):
-    text: str                    # anonymized contract text
-    comments: List[BaseMessage]  # accumulated agent comments
-    legal_risk: float            # 0-1 score from legal agent
-    financial_risk: float        # 0-1 score from financial agent
-    compliance_risk: float       # 0-1 score from compliance agent
-    final_score: float           # aggregated final score
-    final_report: str            # narrative risk report
-```
-
-### Agent Responsibilities
-
-**Legal Agent**
-Analyzes clauses for unfair terms, one-sided obligations, missing protections, and liability exposure. Returns `legal_risk` (0–1) and a brief explanation.
-
-**Financial Agent**
-Examines payment terms, penalty clauses, monetary obligations, and financial liability caps. Returns `financial_risk` (0–1) and a brief explanation.
-
-**Compliance Agent**
-Reviews regulatory alignment, governance requirements, and legal obligation gaps. Returns `compliance_risk` (0–1) and a brief explanation.
-
-**Evaluator**
-Receives all three risk scores and agent comments. Produces a 100–200 word final risk report in markdown and an aggregated `final_score` (0–1).
-
-### Graph Flow
-
-```
-START → legal → financial → compliance → evaluator → END
-```
-
----
-
-## Anonymization Pipeline
-
-ContractIQ uses **Microsoft Presidio** with a **BERT transformer backbone** (`dslim/bert-base-NER`) for high-accuracy PII detection. This is significantly more reliable than regex-only approaches.
-
-### Detected Entity Types
-
-```python
-entity_types = [
-    "CREDIT_CARD", "CRYPTO", "EMAIL_ADDRESS", "IBAN_CODE",
-    "IP_ADDRESS", "MAC_ADDRESS", "NRP", "LOCATION",
-    "PERSON", "PHONE_NUMBER", "MEDICAL_LICENSE",
-    "URL", "ORGANIZATION"
-]
-```
-
-### Fuzzy Entity Deduplication
-
-The `find_similar_entity` function uses `thefuzz` to match variations of the same entity (e.g. "Hemas" and "Hemas Ltd" both map to the same token), preventing redundant placeholder creation:
-
-```python
-def find_similar_entity(entity_text, entity_map, threshold=80):
-    choices = list(entity_map.keys())
-    closest = process.extractOne(entity_text, choices)
-    if closest and closest[1] > threshold:
-        return closest[0]
-    return None
-```
-
-### Overlap Resolution
-
-Nested or overlapping entity detections are resolved before replacement to prevent malformed output:
-
-```python
-def remove_overlaps(results):
-    results = sorted(results, key=lambda x: (x.start, -(x.end - x.start)))
-    filtered = []
-    for r in results:
-        if not any(not (r.end <= f.start or r.start >= f.end) for f in filtered):
-            filtered.append(r)
-    return filtered
-```
-
----
-
-## Setup & Installation
-
-### Prerequisites
-
-- Python 3.10+
-- Google Colab (recommended) or local environment with GPU for BERT inference
-
-### Install Dependencies
+### 1. Clone / unzip the project
 
 ```bash
-pip install presidio-analyzer
-pip install presidio-anonymizer
-pip install "presidio-analyzer[transformers]"
-pip install docling
-pip install thefuzz
-pip install langgraph
-pip install langchain-deepseek
-pip install langchain-google-genai
-pip install langchain-groq
-pip install torch
+unzip contractiq.zip
+cd contractiq
 ```
 
-### API Keys Required
+### 2. Configure environment variables
 
-The notebook reads API keys from Google Colab Secrets (`userdata`). Add the following secrets in your Colab environment:
+```bash
+cp .env.example .env
+```
 
-| Secret Name        | Description                                                                                     |
-| ------------------ | ----------------------------------------------------------------------------------------------- |
-| `DEEPSEEK_API_KEY` | DeepSeek API key — get free at [platform.deepseek.com](https://platform.deepseek.com)           |
-| `GOOGLE_API_KEY`   | Google Gemini API key — get free at [aistudio.google.com](https://aistudio.google.com)          |
-| `GROQ_API_KEY`     | Groq API key (recommended for speed) — get free at [console.groq.com](https://console.groq.com) |
+Open `.env` and add your Groq API key:
+
+```
+GROQ_API_KEY=your_groq_api_key_here
+```
+
+### 3. Set up the Python backend
+
+```bash
+python -m venv-ai
+```
+
+Activate the virtual environment:
+
+- **macOS / Linux:**
+  ```bash
+  source venv/bin/activate
+  ```
+- **Windows (Command Prompt):**
+  ```cmd
+  venv\Scripts\activate.bat
+  ```
+- **Windows (PowerShell):**
+  ```powershell
+  venv\Scripts\Activate.ps1
+  ```
+
+Install dependencies:
+```bash
+pip install torch==2.5.1 --index-url https://download.pytorch.org/whl/cpu
+pip install -r requirements.txt
+pip install https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.8.0/en_core_web_sm-3.8.0-py3-none-any.whl
+```
+
+### 4. Seed the ChromaDB vector store
+
+The evaluator needs a populated ChromaDB to retrieve risk rules. Seed it with at least one contract before the first use:
+
+```bash
+cd ../ai
+python - <<'EOF'
+from helper import process_contract, pdf_to_markdown
+# Point this at any contract PDF you have, or use the sample below
+text = """
+This Software License Agreement is entered into between Licensor and Licensee.
+Licensor grants a non-exclusive, non-transferable license to use the software.
+Licensee shall not sublicense, sell, or redistribute the software.
+The agreement may be terminated by either party with 30 days written notice.
+Licensor's liability shall not exceed the fees paid in the preceding 12 months.
+Licensee shall indemnify Licensor against third-party claims arising from misuse.
+All disputes shall be resolved by binding arbitration under AAA rules.
+"""
+process_contract(text)
+print("ChromaDB seeded successfully.")
+EOF
+```
+
+> **Tip:** If you have sample contract PDFs, you can seed from them using `feed_rules("path/to/contracts/folder")` in `helper.py`.
+
+### 5. Set up the frontend
+
+```bash
+cd ../frontend
+npm install
+```
+
+---
+
+## Running the App
+
+You need **two terminals** running simultaneously.
+
+### Terminal 1 — Backend
+
+```bash
+source venv/bin/activate   # Windows: venv\Scripts\activate.bat
+python uvicorn backend.src.app.main:app --reload --port 8000
+```
+
+The API will be available at: http://localhost:8000
+
+### Terminal 2 — Frontend
+
+```bash
+cd frontend
+npm run dev
+```
+
+The app will be available at: http://localhost:3000
 
 ---
 
 ## Usage
 
-### Running in Google Colab
+1. **Upload & Anonymize** — Drop a contract PDF. The app extracts text and strips PII (names, orgs, emails, etc.) using Presidio + BERT NER. The original and anonymized versions are shown side-by-side.
 
-1. Open `Hemas_project.ipynb` in Google Colab
-2. Add your API keys to Colab Secrets
-3. Run all cells in order:
-   - **Cell 1:** Install dependencies
-   - **Cell 2:** Load and parse contract document using Docling
-   - **Cell 3:** Run Presidio PII anonymization
-   - **Cell 4:** Run LangGraph multi-agent audit pipeline
-4. Final output prints the risk report and score
+2. **Run Audit** — Click "Run adversarial audit". A LangGraph multi-agent pipeline evaluates the anonymized contract across 6 risk dimensions, streaming results live.
 
-### Switching LLM Provider
-
-The notebook currently uses DeepSeek. To switch to Groq (recommended — significantly faster):
-
-```python
-# Replace DeepSeek with Groq
-from langchain_groq import ChatGroq
-
-llm = ChatGroq(
-    model="meta-llama/llama-4-scout-17b-16e-instruct",
-    temperature=0,
-    api_key=GROQ_API_KEY
-)
-```
+3. **View Report** — See the structured risk report with scores, risk areas, and recommendations. Download a PDF copy.
 
 ---
 
-## Sample Output
+## Troubleshooting
 
-Tested on a **Cyber Mutual Assistance NDA**:
+**`collection does not exist` error on startup**
+→ You haven't seeded ChromaDB yet. Run the seed script in Step 4.
 
-```
-──────────────────────────────────────────────────
-This Mutual Non-Disclosure Agreement for a Cyber
-Mutual Assistance Program presents a moderate overall
-risk profile with balanced protections and concerning
-provisions.
+**Presidio / transformers model download slow on first run**
+→ The `dslim/bert-base-NER` model is downloaded from HuggingFace on first use (~400MB). This is normal.
 
-Key risks identified:
-• Broad legal process exemptions with minimal 7-day notice
-• Unilateral withdrawal rights with only 10 days notice
-• No warranties on information accuracy
-• Potential conflicts with regulatory reporting requirements
-• Elevated compliance risks due to mandatory cybersecurity
-  reporting obligation conflicts
-──────────────────────────────────────────────────
+**CORS errors in the browser**
+→ Make sure the backend is running on port 8000 and the frontend on port 3000. Both ports are pre-configured.
 
-FINAL SCORE: 0.28
-──────────────────────────────────────────────────
-Elapsed time: 83.78s
-```
+**`ModuleNotFoundError: No module named 'backend'`**
+→ Always run uvicorn from the `backend/` directory, not the project root.
+
+**Windows: `venv\Scripts\Activate.ps1` blocked by execution policy**
+→ Run: `Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser`
 
 ---
 
-## Known Issues & Planned Improvements
+## Environment Variables
 
-| Issue                               | Status     | Plan                                       |
-| ----------------------------------- | ---------- | ------------------------------------------ |
-| 83s execution time with DeepSeek    | 🔴 Active  | Switch to Groq API — expected <15s         |
-| No de-anonymization of final report | 🔴 Active  | Add token re-mapping after evaluator node  |
-| No RAG knowledge base               | 🟡 Planned | Add ChromaDB with Sri Lankan legal corpus  |
-| AUDITOR/ATTACKER adversarial loop   | 🟡 Planned | Restructure to match proposal architecture |
-| No frontend UI                      | 🟡 Planned | Streamlit or React dashboard               |
-| Risk score on 0–1 scale             | 🟡 Planned | Convert to 0–100 for display consistency   |
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `GROQ_API_KEY` | ✅ Yes | API key from https://console.groq.com |
 
 ---
 
-## Project Structure
+## Tech Stack
 
-```
-contractiq/
-├── Hemas_project.ipynb     # Main notebook — full pipeline
-├── README.md               # This file
-└── knowledge_base/         # (planned)
-    ├── sl_laws/            # Sri Lankan legal documents
-    ├── past_contracts/     # Annotated historical contracts
-    └── templates/          # COE standard clause templates
-```
+**Backend:** FastAPI · Uvicorn · Presidio · Docling · LangGraph · LangChain · ChromaDB · Groq (Llama 4 Scout) · ReportLab
 
----
-
-## Team
-
-**Team_404 — University of Moratuwa**
-AITHON 2026 | Hemas Holdings PLC AI Innovation Challenge
-Target: Centre of Excellence (COE) | D2D Track
-
----
-
-## Competition Context
-
-This project was built for **AITHON 2026**, an enterprise AI innovation challenge by Hemas Holdings PLC's Technology & Transformation Team. The solution targets the COE's legal and procurement operations, where manual contract review currently takes 3–5 days per document across six Strategic Business Units.
-
-**Functional Contract (Grand Finale deliverables):**
-
-1. Anonymized Contract Upload & Processing Pipeline
-2. Multi-Agent Adversarial Audit Loop with RAG Grounding
-3. Structured Risk Report Generation & Dashboard
+**Frontend:** React 18 · TypeScript · Vite · Tailwind CSS · Framer Motion · Lucide Icons
