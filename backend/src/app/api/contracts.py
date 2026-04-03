@@ -2,11 +2,12 @@ import os
 import uuid
 import json
 from fastapi import APIRouter, UploadFile, File, HTTPException
-from fastapi.responses import StreamingResponse
+from fastapi.responses import StreamingResponse, FileResponse
 from pydantic import BaseModel
 
 from app.services.anonymization_service import anonymize_document
 from app.services.rag_service import evaluate_document_stream
+from app.services.pdf_service import generate_risk_pdf
 
 router = APIRouter()
 
@@ -84,7 +85,7 @@ async def evaluate_contract(request: EvaluateRequest):
             data = json.load(f)
 
         # Check state
-        if data.get("status") != "ANONYMIZED":
+        if data.get("status") not in ("ANONYMIZED", "EVALUATED"):
             raise HTTPException(
                 status_code=400,
                 detail="Document not ready for evaluation"
@@ -109,6 +110,33 @@ async def evaluate_contract(request: EvaluateRequest):
                 yield json.dumps(step_data) + "\n"
 
         return StreamingResponse(event_generator(), media_type="application/x-ndjson")
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/download-report/{document_id}")
+async def download_report(document_id: str):
+    try:
+        processed_file_path = os.path.join(PROCESSED_DIR, f"{document_id}.json")
+        pdf_output_path = os.path.join(PROCESSED_DIR, f"{document_id}.pdf")
+
+        if not os.path.exists(processed_file_path):
+            raise HTTPException(status_code=404, detail="Analysis not found")
+
+        with open(processed_file_path, "r") as f:
+            data = json.load(f)
+
+        if data.get("status") != "EVALUATED":
+            raise HTTPException(status_code=400, detail="Report not ready")
+
+        # Generate the PDF file
+        generate_risk_pdf(data, pdf_output_path)
+
+        return FileResponse(
+            path=pdf_output_path, 
+            filename=f"Risk_Report_{document_id}.pdf",
+            media_type="application/pdf"
+        )
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
